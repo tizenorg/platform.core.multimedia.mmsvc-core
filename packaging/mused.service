@@ -1,0 +1,16 @@
+[Unit]
+Description=Mused server
+After=vconf-setup.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/mused-server
+Restart=always
+RestartSec=0
+MemoryLimit=100M
+User=system
+Group=system
+SmackProcessLabel=mused-server
+
+[Install]
+WantedBy=multi-user.target
