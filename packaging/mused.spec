@@ -2,8 +2,8 @@ Name:       mused
 Summary:    A Media Daemon library in Tizen Native API
 Version:    0.1.1
 Release:    0
-Group:      TO_BE/FILLED_IN
-License:    TO BE FILLED IN
+Group:      Multimedia/Service
+License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1:    mused.service
 Source2:    mused.socket
@@ -13,28 +13,6 @@ BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(mm-common)
 BuildRequires:  pkgconfig(iniparser)
 BuildRequires:  pkgconfig(json-c)
-#BuildRequires:  pkgconfig(mm-session)
-#BuildRequires:  pkgconfig(mm-sound)
-#BuildRequires:  pkgconfig(mm-player)
-#BuildRequires:  pkgconfig(mm-ta)
-#BuildRequires:  pkgconfig(capi-base-common)
-#BuildRequires:  pkgconfig(capi-media-sound-manager)
-#BuildRequires:  pkgconfig(gstreamer-0.10)
-#BuildRequires:  pkgconfig(gstreamer-plugins-base-0.10)
-#BuildRequires:  pkgconfig(gstreamer-interfaces-0.10)
-#BuildRequires:  pkgconfig(gstreamer-app-0.10)
-#BuildRequires:  pkgconfig(appcore-efl)
-#BuildRequires:  pkgconfig(elementary)
-#BuildRequires:  pkgconfig(ecore)
-#BuildRequires:  pkgconfig(evas)
-#BuildRequires:  pkgconfig(ecore-x)
-#BuildRequires:  pkgconfig(capi-media-tool)
-#BuildRequires:  pkgconfig(libtbm)
-#BuildRequires:  pkgconfig(mmutil-imgp)
-#BuildRequires:  pkgconfig(audio-session-mgr)
-#BuildRequires:  pkgconfig(vconf)
-#BuildRequires:  pkgconfig(icu-i18n)
-#BuildRequires:  pkgconfig(utilX)
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
@@ -44,7 +22,7 @@ Requires(postun): /sbin/ldconfig
 
 %package devel
 Summary:  A Media Daemon library in Tizen (Development)
-Group:    TO_BE/FILLED_IN
+Group:    Multimedia/Service
 Requires: %{name} = %{version}-%{release}
 Requires:  pkgconfig(mm-common)
 Requires:  pkgconfig(iniparser)
