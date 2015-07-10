@@ -39,14 +39,14 @@ export CXXFLAGS="$CXXFLAGS -DTIZEN_DEBUG_ENABLE -D_GNU_SOURCE"
 export FFLAGS="$FFLAGS -DTIZEN_DEBUG_ENABLE -D_GNU_SOURCE"
 %endif
 MAJORVER=`echo %{version} | awk 'BEGIN {FS="."}{print $1}'`
-cmake . -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER}
+cmake . -DCMAKE_INSTALL_PREFIX={_prefix} -DFULLVER=%{version} -DMAJORVER=${MAJORVER}
 
 
 make %{?jobs:-j%jobs}
 
 %install
 rm -rf %{buildroot}
-mkdir -p %{buildroot}/usr/share/license
+mkdir -p %{buildroot}%{_datadir}/license
 #mkdir -p %{buildroot}/opt/usr/devel
 cp LICENSE.APLv2 %{buildroot}/usr/share/license/%{name}
 mkdir -p %{buildroot}/usr/bin
@@ -72,14 +72,15 @@ chown 200:200 %{_libdir}/systemd/system/mused.socket
 %files
 %manifest mused.manifest
 %defattr(-,system,system,-)
+%license LICENSE.APLv2
 %{_libdir}/libmused.so.*
-%{_datadir}/license/%{name}
 %{_libdir}/systemd/system/mused.service
 %{_libdir}/systemd/system/multi-user.target.wants/mused.service
 %{_libdir}/systemd/system/sockets.target.wants/mused.socket
 %{_libdir}/systemd/system/mused.socket
+%{_datadir}/license/%{name}
 %{_datadir}/mused/mused.conf
-/usr/bin/*
+%{_bindir}/*
 
 
 %files devel
