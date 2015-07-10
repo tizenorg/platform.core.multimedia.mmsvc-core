@@ -34,7 +34,7 @@ FOREACH(flag ${${fw_name}_CFLAGS})
     SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
-SET(CMAKE_C_FLAGS "-I./include ${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -fPIC -Wall -Werror -std=gnu99")
+SET(CMAKE_C_FLAGS "-I./include ${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -fPIC -Wall -std=gnu99")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 
 IF("${ARCH}" STREQUAL "arm")
@@ -47,7 +47,6 @@ ADD_DEFINITIONS("-DTIZEN_DEBUG")
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--rpath=/usr/lib")
 
 aux_source_directory(src SOURCES)
-#ADD_LIBRARY(${fw_name} SHARED ${SOURCES})
 ADD_LIBRARY(${fw_name} SHARED ${SRCS})
 
 TARGET_LINK_LIBRARIES(${fw_name} ${${fw_name}_LDFLAGS})
@@ -63,7 +62,7 @@ ADD_EXECUTABLE(mused-server ${SRC-SERVER})
 TARGET_LINK_LIBRARIES(mused-server ${pkgs_LDFLAGS} ${fw_name} ${CMAKE_DL_LIBS})
 INSTALL(TARGETS mused-server DESTINATION ${BINDIR})
 
-INSTALL(TARGETS ${fw_name} DESTINATION lib)
+INSTALL(TARGETS ${fw_name} DESTINATION ${LIBDIR})
 INSTALL(
         DIRECTORY ${INC_DIR}/ DESTINATION include/media
         FILES_MATCHING
@@ -82,7 +81,7 @@ CONFIGURE_FILE(
     ${CMAKE_CURRENT_SOURCE_DIR}/config/${fw_name}.conf
     @ONLY
 )
-INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/${fw_name}.pc DESTINATION lib/pkgconfig)
+INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/${fw_name}.pc DESTINATION ${LIBDIR}/pkgconfig)
 INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config/${fw_name}.conf DESTINATION /usr/share/${fw_name})
 
 IF(UNIX)

@@ -39,7 +39,7 @@ export CXXFLAGS="$CXXFLAGS -DTIZEN_DEBUG_ENABLE -D_GNU_SOURCE"
 export FFLAGS="$FFLAGS -DTIZEN_DEBUG_ENABLE -D_GNU_SOURCE"
 %endif
 MAJORVER=`echo %{version} | awk 'BEGIN {FS="."}{print $1}'`
-cmake . -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER}
+cmake . -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER} -DLIBDIR=%{_libdir}
 
 
 make %{?jobs:-j%jobs}
@@ -47,7 +47,6 @@ make %{?jobs:-j%jobs}
 %install
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/license
-#mkdir -p %{buildroot}/opt/usr/devel
 cp LICENSE.APLv2 %{buildroot}/usr/share/license/%{name}
 mkdir -p %{buildroot}/usr/bin
 cp mused-server %{buildroot}/usr/bin
