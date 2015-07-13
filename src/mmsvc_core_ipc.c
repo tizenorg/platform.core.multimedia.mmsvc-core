@@ -129,7 +129,7 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 {
 	int recvLen = 0;
 	int currLen = 0;
-	int fd = (int) data;
+	intptr_t fd = (intptr_t) data;
 	Client client = NULL;
 	char *recvBuff = NULL;
 	int allocSize = 0;
@@ -178,7 +178,7 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 					recvBuff = g_renew(char, recvBuff, allocSize);
 				}
 			} else {
-				int data = 0;
+				intptr_t data = 0;
 				if (mmsvc_core_msg_json_deserialize("client_addr", recvBuff, &data, NULL)) {
 					client = (Client)data;
 					if (client) {
@@ -225,11 +225,11 @@ gboolean mmsvc_core_ipc_job_function(mmsvc_core_workqueue_job_t *job)
 gboolean mmsvc_core_ipc_data_job_function(mmsvc_core_workqueue_job_t *job)
 {
 	LOGD("Enter");
-	int fd;
+	intptr_t fd;
 
 	g_return_val_if_fail(job != NULL, FALSE);
 
-	fd = (int) job->user_data;
+	fd = (intptr_t) job->user_data;
 	g_return_val_if_fail(fd > 0, FALSE);
 
 	LOGD("data channel fd : %d", fd);
