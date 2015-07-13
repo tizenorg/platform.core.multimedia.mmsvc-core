@@ -155,7 +155,7 @@ static MMServer *_mmsvc_core_create_new_server_from_fd(int fd[], int type)
 
 	for (i = 0; i < MUSED_CHANNEL_MAX; i++) {
 		if (!_mmsvc_core_attach_server(fd[i],
-					_mmsvc_core_connection_handler, (gpointer) i)) {
+					_mmsvc_core_connection_handler, (gpointer)(intptr_t) i)) {
 			LOGD("Fail to attach server fd %d", fd[i]);
 			MMSVC_FREE(server);
 			return NULL;
@@ -325,7 +325,7 @@ static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
 	if (channel == MUSED_CHANNEL_MSG)
 		job->user_data = client;
 	else
-		job->user_data = (void *)client_sockfd;
+		job->user_data = (void *)(intptr_t)client_sockfd;
 
 	mmsvc_core_workqueue_get_instance()->add_job(job);
 

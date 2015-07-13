@@ -50,7 +50,7 @@ typedef enum {
 	MUSED_MSG_PARSE_ERROR_MAX
 } mused_msg_parse_err_e;
 
-char * mmsvc_core_msg_json_factory_new(int api, const char *arg_name, int arg, ...);
+char * mmsvc_core_msg_json_factory_new(int api, const char *arg_name, intptr_t arg, ...);
 void mmsvc_core_msg_json_factory_free(char * msg);
 gboolean mmsvc_core_msg_json_deserialize(char *key, char* buf, void *data, mused_msg_parse_err_e *err);
 gboolean mmsvc_core_msg_json_deserialize_len(char *key, char* buf, int *parse_len, void *data, mused_msg_parse_err_e *err);
