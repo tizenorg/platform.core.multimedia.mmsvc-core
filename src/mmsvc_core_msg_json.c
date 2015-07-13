@@ -19,8 +19,8 @@
  *
  */
 
-#include "json.h"
-#include "json_tokener.h"
+#include <json.h>
+#include <json_tokener.h>
 #include "mmsvc_core_msg_json.h"
 #include "mmsvc_core_internal.h"
 
@@ -97,7 +97,7 @@ static void _mmsvc_core_msg_json_factory_args(json_object *jobj, va_list ap)
 		LOGD("name: %s ", name);
 		switch (type) {
 		case MUSED_TYPE_INT:
-			json_object_object_add(jobj, name, json_object_new_int(va_arg(ap, int)));
+			json_object_object_add(jobj, name, json_object_new_int64(va_arg(ap, int64_t)));
 			break;
 		case MUSED_TYPE_DOUBLE:
 			json_object_object_add(jobj, name, json_object_new_double(va_arg(ap, double)));
@@ -108,12 +108,12 @@ static void _mmsvc_core_msg_json_factory_args(json_object *jobj, va_list ap)
 		case MUSED_TYPE_ARRAY:
 			{
 				int len = va_arg(ap, int);
-				int *value = va_arg(ap, int *);
+				intptr_t *value = va_arg(ap, intptr_t *);
 				int i;
 				json_object *jarr = json_object_new_array();
 
 				for (i = 0; i < len; i++)
-					json_object_array_add(jarr, json_object_new_int(value[i]));
+					json_object_array_add(jarr, json_object_new_int64(value[i]));
 				json_object_object_add(jobj, name, jarr);
 			}
 			break;
@@ -123,7 +123,7 @@ static void _mmsvc_core_msg_json_factory_args(json_object *jobj, va_list ap)
 	}
 }
 
-char *mmsvc_core_msg_json_factory_new(int api, const char *arg_name, int arg, ...)
+char *mmsvc_core_msg_json_factory_new(int api, const char *arg_name, intptr_t arg, ...)
 {
 	json_object *jobj;
 	const char *jsonMsg;
@@ -136,7 +136,7 @@ char *mmsvc_core_msg_json_factory_new(int api, const char *arg_name, int arg, ..
 
 	json_object_object_add(jobj, "api", json_object_new_int(api));
 	if (arg_name)
-		json_object_object_add(jobj, arg_name, json_object_new_int(arg));
+		json_object_object_add(jobj, arg_name, json_object_new_int64(arg));
 	else
 		LOGE("Error - null arg_name");
 
@@ -202,8 +202,8 @@ gboolean mmsvc_core_msg_json_deserialize_len(char *key, char* buf, int *parse_le
 		LOGD("json_type_double (%s)          value: %p", key, (double *)data);
 		break;
 	case json_type_int:
-		*(int *)data = json_object_get_int(val);
-		LOGD("json_type_int (%s)          value: %p", key, (int *)data);
+		*(int64_t *)data = json_object_get_int64(val);
+		LOGD("json_type_int (%s)          value: %p", key, (int64_t *)data);
 		break;
 	case json_type_object:
 		LOGD("json_type_object (%s)          value: %d", key, json_object_get_object(val));
@@ -215,10 +215,10 @@ gboolean mmsvc_core_msg_json_deserialize_len(char *key, char* buf, int *parse_le
 	case json_type_array:
 		LOGD("json_type_array (%s)", key);
 		int i, len;
-		int *int_data = (int *)data;
+		intptr_t *int_data = (intptr_t *)data;
 		len = json_object_array_length(val);
 		for (i = 0; i < len; i++)
-			int_data[i] = json_object_get_int(json_object_array_get_idx(val, i));
+			int_data[i] = json_object_get_int64(json_object_array_get_idx(val, i));
 		break;
 	}
 	json_object_put(jobj);
