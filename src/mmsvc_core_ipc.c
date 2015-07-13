@@ -129,7 +129,7 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 {
 	int recvLen = 0;
 	int currLen = 0;
-	int fd = (int) data;
+	int fd = (intptr_t) data;
 	Client client = NULL;
 	char *recvBuff = NULL;
 	int allocSize = 0;
@@ -180,7 +180,7 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 			} else {
 				int data = 0;
 				if (mmsvc_core_msg_json_deserialize("client_addr", recvBuff, &data, NULL)) {
-					client = (Client)data;
+					client = (Client)(intptr_t)data;
 					if (client) {
 						client->ch[MUSED_CHANNEL_DATA].p_gthread = g_thread_self();
 					}
@@ -229,12 +229,12 @@ gboolean mmsvc_core_ipc_data_job_function(mmsvc_core_workqueue_job_t *job)
 
 	g_return_val_if_fail(job != NULL, FALSE);
 
-	fd = (int) job->user_data;
+	fd = (intptr_t) job->user_data;
 	g_return_val_if_fail(fd > 0, FALSE);
 
 	LOGD("data channel fd : %d", fd);
 
-	g_thread_new(NULL, _mmsvc_core_ipc_data_worker, (gpointer)fd);
+	g_thread_new(NULL, _mmsvc_core_ipc_data_worker, (gpointer)(intptr_t)fd);
 #if 0
 	if (!client->p_gthread) {
 		LOGE("Error - g_thread_new");
