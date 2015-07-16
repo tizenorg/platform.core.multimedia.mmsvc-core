@@ -28,6 +28,10 @@ extern "C" {
 
 #include <glib.h>
 
+#define PARAM_HANDLE		"handle"
+#define PARAM_RETURN		"ret"
+#define PARAM_EVENT			"event"
+
 typedef enum {
 	MMSVC_PLAYER,
 	MMSVC_CAMERA,
@@ -35,13 +39,16 @@ typedef enum {
 	MMSVC_CLIENT_MAX
 } mmsvc_api_client_e;
 
-enum {
+typedef enum {
 	MUSED_TYPE_INT = 1,
+	MUSED_TYPE_INT64,
+	MUSED_TYPE_POINTER,
 	MUSED_TYPE_DOUBLE,
 	MUSED_TYPE_STRING,
 	MUSED_TYPE_ARRAY,
+	MUSED_TYPE_ANY,
 	MUSED_TYPE_MAX
-};
+} mused_type_e;
 
 typedef enum {
 	MUSED_MSG_PARSE_ERROR_NONE,
@@ -50,10 +57,15 @@ typedef enum {
 	MUSED_MSG_PARSE_ERROR_MAX
 } mused_msg_parse_err_e;
 
-char * mmsvc_core_msg_json_factory_new(int api, const char *arg_name, intptr_t arg, ...);
+char * mmsvc_core_msg_json_factory_new(int api, const char *arg_name, int64_t arg, ...);
 void mmsvc_core_msg_json_factory_free(char * msg);
 gboolean mmsvc_core_msg_json_deserialize(char *key, char* buf, void *data, mused_msg_parse_err_e *err);
-gboolean mmsvc_core_msg_json_deserialize_len(char *key, char* buf, int *parse_len, void *data, mused_msg_parse_err_e *err);
+gboolean mmsvc_core_msg_json_deserialize_type(
+		char *key, char* buf, void *data,
+		mused_msg_parse_err_e *err, mused_type_e m_type);
+gboolean mmsvc_core_msg_json_deserialize_len(
+		char *key, char* buf, int *parse_len, void *data,
+		mused_msg_parse_err_e *err, mused_type_e m_type);
 
 #ifdef _cplusplus
 }

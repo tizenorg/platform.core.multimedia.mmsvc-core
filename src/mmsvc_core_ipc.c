@@ -76,12 +76,18 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 			mmsvc_core_log_get_instance()->log(client->recvMsg);
 
 			while (client->msg_offset < len) {
-				if (mmsvc_core_msg_json_deserialize_len("api", client->recvMsg + client->msg_offset, &parse_len, &cmd, &err)) {
-					if (mmsvc_core_msg_json_deserialize_len("handle", client->recvMsg + client->msg_offset, &parse_len, &handle, &err))
+				if (mmsvc_core_msg_json_deserialize_len("api",
+							client->recvMsg + client->msg_offset,
+							&parse_len, &cmd, &err, MUSED_TYPE_INT)) {
+					if (mmsvc_core_msg_json_deserialize_len("handle",
+								client->recvMsg + client->msg_offset,
+								&parse_len, &handle, &err, MUSED_TYPE_POINTER))
 						LOGD("cmd: %d len: %d Message: %s", cmd, len, client->recvMsg);
 					switch (cmd) {
 					case API_CREATE:
-						if (mmsvc_core_msg_json_deserialize_len("client", client->recvMsg + client->msg_offset, &parse_len, &api_client, &err)) {
+						if (mmsvc_core_msg_json_deserialize_len("client",
+									client->recvMsg + client->msg_offset,
+									&parse_len, &api_client, &err, MUSED_TYPE_INT)) {
 							client->api_client = api_client;
 							client->ch[MUSED_CHANNEL_MSG].module = mmsvc_core_module_load(api_client);
 							client->ch[MUSED_CHANNEL_DATA].queue = g_queue_new();
@@ -179,7 +185,8 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 				}
 			} else {
 				intptr_t client_addr = 0;
-				if (mmsvc_core_msg_json_deserialize("client_addr", recvBuff, &client_addr, NULL)) {
+				if (mmsvc_core_msg_json_deserialize_type("client_addr",
+							recvBuff, &client_addr, NULL, MUSED_TYPE_POINTER)) {
 					client = (Client) client_addr;
 					if (client) {
 						client->ch[MUSED_CHANNEL_DATA].p_gthread = g_thread_self();
