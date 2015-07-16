@@ -2,8 +2,6 @@
 SocketUser=system
 SocketGroup=system
 ListenStream=/tmp/.mmsvc_core_socket
-SmackLabelIPIn=mused-server
-SmackLabelIPOut=mused-server
 Service=mused.service
 
 [Install]

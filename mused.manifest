@@ -2,8 +2,4 @@
 	<request>
 		<domain name="_" />
 	</request>
-	<assign>
-		<filesystem path="/usr/bin/mused-server" label="_" exec_label="none" />
-
-	</assign>
 </manifest>
