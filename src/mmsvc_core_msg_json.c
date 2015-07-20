@@ -97,7 +97,16 @@ static void _mmsvc_core_msg_json_factory_args(json_object *jobj, va_list ap)
 		LOGD("name: %s ", name);
 		switch (type) {
 		case MUSED_TYPE_INT:
+			json_object_object_add(jobj, name, json_object_new_int(va_arg(ap, int32_t)));
+			break;
+		case MUSED_TYPE_INT64:
 			json_object_object_add(jobj, name, json_object_new_int64(va_arg(ap, int64_t)));
+			break;
+		case MUSED_TYPE_POINTER:
+			if(sizeof(intptr_t) == 8)
+				json_object_object_add(jobj, name, json_object_new_int64(va_arg(ap, intptr_t)));
+			else
+				json_object_object_add(jobj, name, json_object_new_int(va_arg(ap, intptr_t)));
 			break;
 		case MUSED_TYPE_DOUBLE:
 			json_object_object_add(jobj, name, json_object_new_double(va_arg(ap, double)));
@@ -108,12 +117,12 @@ static void _mmsvc_core_msg_json_factory_args(json_object *jobj, va_list ap)
 		case MUSED_TYPE_ARRAY:
 			{
 				int len = va_arg(ap, int);
-				intptr_t *value = va_arg(ap, intptr_t *);
+				int *value = va_arg(ap, int *);
 				int i;
 				json_object *jarr = json_object_new_array();
 
 				for (i = 0; i < len; i++)
-					json_object_array_add(jarr, json_object_new_int64(value[i]));
+					json_object_array_add(jarr, json_object_new_int(value[i]));
 				json_object_object_add(jobj, name, jarr);
 			}
 			break;
@@ -123,7 +132,7 @@ static void _mmsvc_core_msg_json_factory_args(json_object *jobj, va_list ap)
 	}
 }
 
-char *mmsvc_core_msg_json_factory_new(int api, const char *arg_name, intptr_t arg, ...)
+char *mmsvc_core_msg_json_factory_new(int api, const char *arg_name, int64_t arg, ...)
 {
 	json_object *jobj;
 	const char *jsonMsg;
@@ -167,12 +176,27 @@ gboolean mmsvc_core_msg_json_deserialize(char *key, char* buf, void *data, mused
 	g_return_val_if_fail(data != NULL, FALSE);
 
 	len = strlen(buf);
-	return mmsvc_core_msg_json_deserialize_len(key, buf, &len, data, err);
+	return mmsvc_core_msg_json_deserialize_len(key, buf, &len, data, err, MUSED_TYPE_ANY);
 }
 
-gboolean mmsvc_core_msg_json_deserialize_len(char *key, char* buf, int *parse_len, void *data, mused_msg_parse_err_e *err)
+gboolean mmsvc_core_msg_json_deserialize_type(
+		char *key, char* buf, void *data,
+		mused_msg_parse_err_e *err, mused_type_e m_type)
 {
-	int type;
+	int len = 0;
+
+	g_return_val_if_fail(buf != NULL, FALSE);
+	g_return_val_if_fail(data != NULL, FALSE);
+
+	len = strlen(buf);
+	return mmsvc_core_msg_json_deserialize_len(key, buf, &len, data, err, m_type);
+}
+
+gboolean mmsvc_core_msg_json_deserialize_len(
+		char *key, char* buf, int *parse_len, void *data,
+		mused_msg_parse_err_e *err, mused_type_e m_type)
+{
+	int j_type;
 	json_object *val, *jobj;
 
 	g_return_val_if_fail(key != NULL, FALSE);
@@ -189,8 +213,8 @@ gboolean mmsvc_core_msg_json_deserialize_len(char *key, char* buf, int *parse_le
 		return FALSE;
 	}
 
-	type = json_object_get_type(val);
-	switch (type) {
+	j_type = json_object_get_type(val);
+	switch (j_type) {
 	case json_type_null:
 		LOGD("json_type_null\n");
 		break;
@@ -202,8 +226,21 @@ gboolean mmsvc_core_msg_json_deserialize_len(char *key, char* buf, int *parse_le
 		LOGD("json_type_double (%s)          value: %p", key, (double *)data);
 		break;
 	case json_type_int:
-		*(int64_t *)data = json_object_get_int64(val);
-		LOGD("json_type_int (%s)          value: %p", key, (int64_t *)data);
+		if(m_type == MUSED_TYPE_ANY || m_type == MUSED_TYPE_INT) {
+			*(int32_t *)data = json_object_get_int(val);
+			LOGD("json_type_int (%s)          value: %d (32)", key, *(int32_t *)data);
+		}
+		else if(m_type == MUSED_TYPE_INT64) {
+			*(int64_t *)data = json_object_get_int64(val);
+			LOGD("json_type_int (%s)          value: %" G_GINT64_FORMAT "(64)", key, *(int64_t *)data);
+		}
+		else if(m_type == MUSED_TYPE_POINTER) {
+			if(sizeof(intptr_t) == 8)
+				*(intptr_t *)data = json_object_get_int64(val);
+			else
+				*(intptr_t *)data = json_object_get_int(val);
+			LOGD("json_type_int (%s)          value: %p", key, *(intptr_t *)data);
+		}
 		break;
 	case json_type_object:
 		LOGD("json_type_object (%s)          value: %d", key, json_object_get_object(val));
@@ -215,10 +252,10 @@ gboolean mmsvc_core_msg_json_deserialize_len(char *key, char* buf, int *parse_le
 	case json_type_array:
 		LOGD("json_type_array (%s)", key);
 		int i, len;
-		intptr_t *int_data = (intptr_t *)data;
+		int *int_data = (int *)data;
 		len = json_object_array_length(val);
 		for (i = 0; i < len; i++)
-			int_data[i] = json_object_get_int64(json_object_array_get_idx(val, i));
+			int_data[i] = json_object_get_int(json_object_array_get_idx(val, i));
 		break;
 	}
 	json_object_put(jobj);
