@@ -42,6 +42,7 @@ void *mmsvc_core_client_get_cust_data(Client client);
 char *mmsvc_core_client_get_msg(Client client);
 int mmsvc_core_client_get_capi(Client client);
 void mmsvc_core_worker_exit(Client client);
+unsigned mmsvc_core_get_atomic_uint(void);
 
 #ifdef __cplusplus
 }

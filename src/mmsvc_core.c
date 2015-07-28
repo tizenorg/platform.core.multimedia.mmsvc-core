@@ -499,3 +499,12 @@ void mmsvc_core_worker_exit(Client client)
 	LOGD("Leave");
 	g_thread_exit(NULL);
 }
+
+unsigned mmsvc_core_get_atomic_uint()
+{
+	static guint atom = 0;
+
+	g_atomic_int_inc(&atom);
+
+	return atom;
+}
