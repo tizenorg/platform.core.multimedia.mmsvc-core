@@ -103,6 +103,9 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 						LOGD("DESTROY");
 						mmsvc_core_module_dll_symbol(cmd, client);
 						g_queue_free(client->ch[MUSED_CHANNEL_DATA].queue);
+						client->ch[MUSED_CHANNEL_DATA].queue = NULL;
+						g_cond_broadcast(&client->ch[MUSED_CHANNEL_DATA].cond);
+						g_thread_join(client->ch[MUSED_CHANNEL_DATA].p_gthread);
 						g_mutex_clear(&client->ch[MUSED_CHANNEL_DATA].mutex);
 						g_cond_clear(&client->ch[MUSED_CHANNEL_DATA].cond);
 						mmsvc_core_module_close(client);
@@ -339,6 +342,7 @@ char *mmsvc_core_ipc_get_data(Client client)
 	gint64 end_time = g_get_monotonic_time() + 100 * G_TIME_SPAN_MILLISECOND;
 	g_return_val_if_fail(client, NULL);
 	ch = &client->ch[MUSED_CHANNEL_DATA];
+	g_return_val_if_fail(ch->queue, NULL);
 
 	g_mutex_lock(&ch->mutex);
 	if (g_queue_is_empty(ch->queue))
