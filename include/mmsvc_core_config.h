@@ -26,6 +26,7 @@
 extern "C" {
 #endif
 
+#include <glib.h>
 #include <iniparser.h>
 
 #define CONFFILE "/usr/share/mused/mused.conf"
@@ -48,8 +49,11 @@ typedef struct config
 	char *logfile;
 	host_info_t *host_infos[HOST_MAX_COUNT];
 	dictionary *mmsvc_dict;
+	gboolean mmsvc_core_gst_initialized;
 	void (*free)(void);
 	char* (*get_path)(int);
+	void (*set_gst_init)(gboolean);
+	gboolean (*get_gst_init) (void);
 } config_t;
 
 /*mmsvc_core_config_init must be called before mmsvc_core_config_get_instance*/

@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+#include <glib.h>
+
 #define MM_URI_MAX_LENGTH 100
 #define MM_MSG_MAX_LENGTH 1024*1024
 
@@ -43,6 +45,7 @@ char *mmsvc_core_client_get_msg(Client client);
 int mmsvc_core_client_get_capi(Client client);
 void mmsvc_core_worker_exit(Client client);
 unsigned mmsvc_core_get_atomic_uint(void);
+gboolean mmsvc_core_get_gst_initialized_value(void);
 
 #ifdef __cplusplus
 }
