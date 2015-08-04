@@ -250,8 +250,6 @@ static void _mmsvc_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 
 static void _mmsvc_core_log_set_log_fd(void)
 {
-	LOGD("Enter");
-
 	g_return_if_fail(g_mused_log != NULL);
 
 	g_mused_log->log_fd = open(LOGFILE, O_CREAT | O_APPEND | O_WRONLY | O_NONBLOCK, 0666);
@@ -264,8 +262,6 @@ static void _mmsvc_core_log_set_log_fd(void)
 		LOGE("unable to set CLO_EXEC on log fd %d: %s", g_mused_log->log_fd, strerror(errno));
 
 	(void) _mmsvc_core_log_fd_set_block(g_mused_log->log_fd);
-
-	LOGD("Leave");
 }
 
 static void _mmsvc_core_log_init_instance(void (*log)(char *), void (*fatal)(char *), void (*set_module_value) (int, GModule *, gboolean), gboolean(*get_module_opened) (int), GModule * (*get_module_value) (int))

@@ -29,7 +29,6 @@ static void _mmsvc_core_workqueue_init_instance(void (*shutdown)(void), void (*a
 
 static void *_mmsvc_core_workqueue_worker_function(void *ptr)
 {
-	LOGD("Enter");
 	mmsvc_core_workqueue_worker_t *worker = (mmsvc_core_workqueue_worker_t *) ptr;
 	mmsvc_core_workqueue_job_t *job;
 
@@ -68,8 +67,6 @@ static void *_mmsvc_core_workqueue_worker_function(void *ptr)
 
 	pthread_mutex_unlock(&worker->workqueue->jobs_mutex);
 	MMSVC_FREE(worker);
-
-	LOGD("Leave");
 
 	pthread_exit(NULL);
 }
@@ -130,7 +127,7 @@ int mmsvc_core_workqueue_init(int numWorkers)
 {
 	int i;
 	mmsvc_core_workqueue_worker_t *worker;
-	LOGD("Enter");
+
 	pthread_cond_t blank_cond = PTHREAD_COND_INITIALIZER;
 	pthread_mutex_t blank_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -164,6 +161,5 @@ int mmsvc_core_workqueue_init(int numWorkers)
 
 	_mmsvc_core_workqueue_init_instance(_mmsvc_core_workqueue_shutdown, _mmsvc_core_workqueue_add_job);
 
-	LOGD("Leave");
 	return 0;
 }

@@ -13,6 +13,8 @@ BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(mm-common)
 BuildRequires:  pkgconfig(iniparser)
 BuildRequires:  pkgconfig(json-c)
+BuildRequires:  pkgconfig(gstreamer-1.0)
+BuildRequires:  pkgconfig(gstreamer-base-1.0)
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
