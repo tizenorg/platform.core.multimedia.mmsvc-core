@@ -71,8 +71,6 @@ static int _mmsvc_core_check_server_is_running(void)
 	int fd, already_running;
 	int ret = -1;
 
-	LOGD("Enter");
-
 	/* First, check whether the existing file is locked. */
 	fd = open(LOCKFILE, O_RDONLY);
 	if (fd == -1 && errno != ENOENT) {
@@ -106,7 +104,6 @@ static int _mmsvc_core_check_server_is_running(void)
 	close(STDIN_FILENO);
 	close(STDOUT_FILENO);
 
-	LOGD("Leave");
 	return 1;
 }
 
@@ -114,8 +111,6 @@ static bool _mmsvc_core_attach_server(int fd, MMSVC_CORE_ClientCallback callback
 {
 	GIOChannel *channel;
 	GSource *src = NULL;
-
-	LOGD("Enter");
 
 	channel = g_io_channel_unix_new(fd);
 	if (!channel) {
@@ -181,6 +176,7 @@ static int _mmsvc_core_free(MMServer *server)
 	remove(LOCKFILE);
 	MMSVC_FREE(server);
 	mmsvc_core_workqueue_get_instance()->shutdown();
+	mmsvc_core_config_get_instance()->free();
 	LOGD("Leave");
 	return retval;
 }
@@ -258,7 +254,6 @@ MMServer *mmsvc_core_new()
 {
 	int fd[MUSED_CHANNEL_MAX];
 	int i;
-	LOGD("Enter");
 
 	for (i = 0; i < MUSED_CHANNEL_MAX; i++) {
 		fd[i] = _mmsvc_core_server_new(i);
@@ -276,8 +271,6 @@ MMServer *mmsvc_core_new()
 		mmsvc_core_workqueue_get_instance()->shutdown();
 		return NULL;
 	}
-
-	LOGD("Leave");
 
 	return _mmsvc_core_create_new_server_from_fd(fd, READ|PERSIST);
 }
@@ -493,8 +486,6 @@ void mmsvc_core_worker_exit(Client client)
 	if (client->ch[MUSED_CHANNEL_DATA].p_gthread)
 		g_thread_unref(client->ch[MUSED_CHANNEL_DATA].p_gthread);
 	MMSVC_FREE(client);
-
-	mmsvc_core_config_get_instance()->free();
 
 	LOGD("Leave");
 	g_thread_exit(NULL);
