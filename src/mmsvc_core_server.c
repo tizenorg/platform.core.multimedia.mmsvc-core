@@ -24,8 +24,10 @@
 #include "mmsvc_core_config.h"
 #include "mmsvc_core_log.h"
 #include "mmsvc_core_tool.h"
+#include <gst/gst.h>
 
 static void _mmsvc_core_server_setup_syslog(void);
+static void _mmsvc_core_server_gst_init(char **cmd);
 extern int mmsvc_core_run();
 
 static void _mmsvc_core_server_setup_syslog(void)
@@ -38,12 +40,43 @@ static void _mmsvc_core_server_setup_syslog(void)
 	LOGD("openlog - mused");
 }
 
+static void _mmsvc_core_server_gst_init(char **cmd)
+{
+	static const int max_argc = 50;
+	gint* argc = NULL;
+	gchar** argv = NULL;
+
+	LOGD("Enter");
+
+	argc = malloc(sizeof(int));
+	argv = malloc(sizeof(gchar*) * max_argc);
+
+	if (!argc || !argv) {
+		LOGE("argc ||argv is NULL");
+		return;
+	}
+	memset(argv, 0, sizeof(gchar*) * max_argc);
+
+	/* add initial */
+	*argc = 1;
+	argv[0] = g_strdup(cmd[0]);
+	/* check disable registry scan */
+	argv[*argc] = g_strdup("--gst-disable-registry-update");
+	(*argc)++;
+	LOGD("--gst-disable-registry-update");
+
+	gst_init(argc, &argv);
+
+	MMSVC_FREE(argv);
+}
+
 int main(int argc, char **argv)
 {
 	int result;
 	pid_t pid, sid;
 
 	_mmsvc_core_server_setup_syslog();
+	_mmsvc_core_server_gst_init(argv);
 	mmsvc_core_log_init();
 	mmsvc_core_config_init();
 
