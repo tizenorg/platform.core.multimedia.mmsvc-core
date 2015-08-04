@@ -185,16 +185,6 @@ static int _mmsvc_core_free(MMServer *server)
 	return retval;
 }
 
-gpointer mmsvc_core_main_loop(gpointer data)
-{
-	while (1) {
-		sleep(LOG_SLEEP_TIMER);
-		LOGD("polling %d\n", g_main_loop_is_running(g_loop));
-	}
-
-	return NULL;
-}
-
 int _mmsvc_core_server_new(mused_channel_e channel)
 {
 	int fd;
@@ -251,35 +241,6 @@ int _mmsvc_core_server_new(mused_channel_e channel)
 	LOGD("Leave");
 
 	return fd;
-}
-
-
-MMServer *mmsvc_core_new()
-{
-	int fd[MUSED_CHANNEL_MAX];
-	int i;
-	LOGD("Enter");
-
-	for (i = 0; i < MUSED_CHANNEL_MAX; i++) {
-		fd[i] = _mmsvc_core_server_new(i);
-		if (fd[i] < 0) {
-			LOGE("Failed to create socket server %d", i);
-			return NULL;
-		}
-	}
-
-	/* Initialize work queue */
-	if (mmsvc_core_workqueue_init(WORK_THREAD_NUM)) {
-		LOGE("mmsvc_core_new : Failed to initialize the workqueue");
-		for (i = 0; i < MUSED_CHANNEL_MAX; i++)
-			close(fd[i]);
-		mmsvc_core_workqueue_get_instance()->shutdown();
-		return NULL;
-	}
-
-	LOGD("Leave");
-
-	return _mmsvc_core_create_new_server_from_fd(fd, READ|PERSIST);
 }
 
 static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
@@ -342,38 +303,6 @@ out:
 	return FALSE;
 }
 
-int mmsvc_core_run()
-{
-	int ret = -1;
-
-	LOGD("Enter");
-
-	ret = _mmsvc_core_check_server_is_running();
-	if (ret == -1) {
-		return -1;
-	} else if (ret == 0) {
-		LOGE("Server is already running");
-		return 2;
-	}
-
-	/* Sigaction */
-	g_loop = g_main_loop_new(NULL, FALSE);
-
-	g_thread = g_thread_new("mmsvc_thread", mmsvc_core_main_loop, g_loop);
-
-	server = mmsvc_core_new();
-	if (!server) {
-		g_main_loop_unref(g_loop);
-		return 1;
-	}
-
-	LOGD("g_main_loop_run");
-	g_main_loop_run(g_loop);
-
-	LOGD("Leave");
-	return _mmsvc_core_free(server);
-}
-
 static int _mmsvc_core_client_new(mused_channel_e channel)
 {
 	struct sockaddr_un address;
@@ -413,6 +342,76 @@ static int _mmsvc_core_client_new(mused_channel_e channel)
 
 	LOGD("Leave");
 	return sockfd;
+}
+
+gpointer mmsvc_core_main_loop(gpointer data)
+{
+	while (1) {
+		sleep(LOG_SLEEP_TIMER);
+		LOGD("polling %d\n", g_main_loop_is_running(g_loop));
+	}
+
+	return NULL;
+}
+
+MMServer *mmsvc_core_new()
+{
+	int fd[MUSED_CHANNEL_MAX];
+	int i;
+	LOGD("Enter");
+
+	for (i = 0; i < MUSED_CHANNEL_MAX; i++) {
+		fd[i] = _mmsvc_core_server_new(i);
+		if (fd[i] < 0) {
+			LOGE("Failed to create socket server %d", i);
+			return NULL;
+		}
+	}
+
+	/* Initialize work queue */
+	if (mmsvc_core_workqueue_init(WORK_THREAD_NUM)) {
+		LOGE("mmsvc_core_new : Failed to initialize the workqueue");
+		for (i = 0; i < MUSED_CHANNEL_MAX; i++)
+			close(fd[i]);
+		mmsvc_core_workqueue_get_instance()->shutdown();
+		return NULL;
+	}
+
+	LOGD("Leave");
+
+	return _mmsvc_core_create_new_server_from_fd(fd, READ|PERSIST);
+}
+
+int mmsvc_core_run()
+{
+	int ret = -1;
+
+	LOGD("Enter");
+
+	ret = _mmsvc_core_check_server_is_running();
+	if (ret == -1) {
+		return -1;
+	} else if (ret == 0) {
+		LOGE("Server is already running");
+		return 2;
+	}
+
+	/* Sigaction */
+	g_loop = g_main_loop_new(NULL, FALSE);
+
+	g_thread = g_thread_new("mmsvc_thread", mmsvc_core_main_loop, g_loop);
+
+	server = mmsvc_core_new();
+	if (!server) {
+		g_main_loop_unref(g_loop);
+		return 1;
+	}
+
+	LOGD("g_main_loop_run");
+	g_main_loop_run(g_loop);
+
+	LOGD("Leave");
+	return _mmsvc_core_free(server);
 }
 
 int mmsvc_core_client_new(void)
