@@ -164,8 +164,7 @@ char *mmsvc_core_msg_json_factory_new(int api, const char *arg_name, int64_t arg
 
 void mmsvc_core_msg_json_factory_free(char *msg)
 {
-	if (msg)
-		MMSVC_FREE(msg);
+	MMSVC_FREE(msg);
 }
 
 gboolean mmsvc_core_msg_json_deserialize(char *key, char* buf, void *data, mused_msg_parse_err_e *err)

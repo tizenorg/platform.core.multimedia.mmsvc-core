@@ -30,8 +30,11 @@ extern "C" {
 
 #define CONFFILE "/usr/share/mused/mused.conf"
 #define HOST_MAX_COUNT 1024
+#define MUSED_MAX_PARAM_NUM 10
+#define MUSED_MAX_PARAM_STRLEN 256
 #define MUSEDHOST "mused:hosts"
 #define MUSEDLOG "mused:logfile"
+#define MUSEDGST "mused:gstparam"
 #define COLON ":"
 #define COMMA ","
 #define PATH "path"
@@ -46,10 +49,14 @@ typedef struct config
 	char *hosts;
 	int type;
 	char *logfile;
+	char *gst_param_str[MUSED_MAX_PARAM_NUM];
+	int gst_param_cnt;
 	host_info_t *host_infos[HOST_MAX_COUNT];
 	dictionary *mmsvc_dict;
 	void (*free)(void);
 	char* (*get_path)(int);
+	int (*get_gst_param_cnt)(void);
+	char* (*get_gst_param_str)(int);
 } config_t;
 
 /*mmsvc_core_config_init must be called before mmsvc_core_config_get_instance*/
