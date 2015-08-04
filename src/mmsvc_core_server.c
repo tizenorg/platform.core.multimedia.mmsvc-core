@@ -24,8 +24,10 @@
 #include "mmsvc_core_config.h"
 #include "mmsvc_core_log.h"
 #include "mmsvc_core_tool.h"
+#include <gst/gst.h>
 
 static void _mmsvc_core_server_setup_syslog(void);
+static void _mmsvc_core_server_gst_init(char **cmd);
 extern int mmsvc_core_run();
 
 static void _mmsvc_core_server_setup_syslog(void)
@@ -38,14 +40,66 @@ static void _mmsvc_core_server_setup_syslog(void)
 	LOGD("openlog - mused");
 }
 
+static void _mmsvc_core_server_gst_init(char **cmd)
+{
+	gint* argc = NULL;
+	gchar** argv = NULL;
+	GError *err = NULL;
+	gboolean ret = FALSE;
+	int i;
+	int gst_param_cnt;
+
+	LOGD("Enter");
+
+	gst_param_cnt = mmsvc_core_config_get_instance()->get_gst_param_cnt();
+	argc = malloc(sizeof(gint*));
+	if (!argc) {
+		LOGE("argc is NULL");
+		return;
+	}
+
+	/* add gst_param */
+	argv = malloc(sizeof(gchar*) * (gst_param_cnt + 1));
+	if (!argv) {
+		LOGE("argv is NULL");
+		return;
+	}
+	memset(argv, 0, sizeof(gchar*) * (gst_param_cnt + 1));
+
+	argv[0] = g_strdup(cmd[0]);
+
+	for (*argc = 1; (*argc) <= gst_param_cnt; (*argc)++) {
+		argv[*argc] = g_strdup(mmsvc_core_config_get_instance()->get_gst_param_str((*argc) - 1));
+		LOGD("mmsvc_gst_param_str[%d] : %s", *argc, argv[*argc]);
+	}
+
+	/* initializing gstreamer */
+	ret = gst_init_check (argc, &argv, &err);
+	if (!ret) {
+		LOGE("Could not initialize GStreamer: %s ", err ? err->message : "unknown error occurred");
+		if (err)
+			g_error_free (err);
+	}
+
+	/* release */
+	for (i = 0; i < *argc; i++) {
+		if (argv[i])
+			MMSVC_FREE(argv[i]);
+	}
+
+	MMSVC_FREE(argv);
+	MMSVC_FREE(argc);
+}
+
 int main(int argc, char **argv)
 {
 	int result;
 	pid_t pid, sid;
 
 	_mmsvc_core_server_setup_syslog();
-	mmsvc_core_log_init();
 	mmsvc_core_config_init();
+	mmsvc_core_log_init();
+	_mmsvc_core_server_gst_init(argv);
 
 	if (argc > 1 && argv)
 		mmsvc_core_tool_parse_params(argc, argv);
