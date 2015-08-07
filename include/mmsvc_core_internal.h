@@ -64,8 +64,8 @@ extern "C" {
 #define MUSED_DIR "/var/run/mused"
 #define LOGFILE "/tmp/mmsvc_core_log"
 #define LOCKFILE "/tmp/.mmsvc-core.lock"
-#define SOCKFILE0 "/tmp/mmsvc_core_socket"
-#define SOCKFILE1 "/tmp/mmsvc_core_data_socket"
+#define SOCKFILE0 "/tmp/.mmsvc_core_socket"
+#define SOCKFILE1 "/tmp/.mmsvc_core_data_socket"
 
 #define TIMEOUT	0x01
 /** Wait for a socket or FD to become readable */

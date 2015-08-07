@@ -124,7 +124,6 @@ static int _mmsvc_core_config_parser(void)
 		MMSVC_FREE(host_name);
 	}
 
-	LOGD("Leave");
 	return 0;
 }
 
