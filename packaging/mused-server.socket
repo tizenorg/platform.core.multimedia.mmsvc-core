@@ -2,7 +2,7 @@
 SocketUser=system
 SocketGroup=system
 ListenStream=/tmp/.mmsvc_core_socket
-Service=mused.service
+Service=mused-server.service
 
 [Install]
 WantedBy=sockets.target
