@@ -4,9 +4,9 @@ Description=Mused server
 [Service]
 User=system
 Group=system
-Type=oneshot
+Type=forking
 ExecStart=/usr/bin/mused-server
-MemoryLimit=10M
+MemoryLimit=100M
 
 [Install]
 WantedBy=multi-user.target
