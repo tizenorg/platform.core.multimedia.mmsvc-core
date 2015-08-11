@@ -2,11 +2,10 @@
 Description=Mused server
 
 [Service]
-User=system
-Group=system
 Type=forking
 ExecStart=/usr/bin/mused-server
 MemoryLimit=100M
+EnvironmentFile=/run/tizen-system-env
 
 [Install]
 WantedBy=multi-user.target
