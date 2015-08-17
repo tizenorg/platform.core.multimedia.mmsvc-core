@@ -1,6 +1,4 @@
 [Socket]
-SocketUser=system
-SocketGroup=system
 ListenStream=/tmp/.mmsvc_core_socket
 Service=mused-server.service
 
