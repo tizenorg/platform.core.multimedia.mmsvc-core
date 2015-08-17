@@ -55,13 +55,14 @@ cp mused-server %{buildroot}/usr/bin
 
 %make_install
 
-mkdir -p %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants
-install -m 0644 %SOURCE1 %{buildroot}%{_libdir}/systemd/system/mused-server.service
-ln -s ../mused-server.service %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants/mused-server.service
+mkdir -p %{buildroot}%{_unitdir}/multi-user.target.wants
+install -m 0644 %SOURCE1 %{buildroot}%{_unitdir}/mused-server.service
+%install_service multi-user.target.wants mused-server.service
 
-mkdir -p %{buildroot}%{_libdir}/systemd/system/sockets.target.wants
-install -m 0644 %SOURCE2 %{buildroot}%{_libdir}/systemd/system/mused-server.socket
-ln -s ../mused-server.socket %{buildroot}%{_libdir}/systemd/system/sockets.target.wants/mused-server.socket
+mkdir -p %{buildroot}%{_unitdir}/sockets.target.wants
+install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/mused-server.socket
+%install_service sockets.target.wants mused-server.socket
+
 
 %post
 /sbin/ldconfig
