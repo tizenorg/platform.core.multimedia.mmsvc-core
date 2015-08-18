@@ -20,6 +20,7 @@
  */
 
 #include "mmsvc_core_internal.h"
+#include "mmsvc_core_config.h"
 #include "mmsvc_core_log.h"
 #ifndef __USE_GNU
 #define __USE_GNU /* for gregs */
@@ -55,11 +56,14 @@ static void _mmsvc_core_log_init_signals(void);
 static int _mmsvc_core_log_fd_set_block(int fd);
 static void _mmsvc_core_log_sigaction(int signo, siginfo_t *si, void *arg);
 static void _mmsvc_core_log_set_log_fd(void);
-static void _mmsvc_core_log_init_instance(void (*log)(char *), void (*fatal)(char *), void (*set_module_value) (int, GModule *, gboolean), gboolean(*get_module_opened) (int), GModule * (*get_module_value) (int));
+static void _mmsvc_core_log_init_instance(void (*log)(char *), void (*fatal)(char *), void (*set_module_value) (int, GModule *, gboolean),
+	gboolean(*get_module_opened) (int), GModule * (*get_module_value) (int), void (*set_msg) (char *), char * (*get_msg) (void));
 static void _mmsvc_core_log_monitor(char *msg);
 static void _mmsvc_core_log_fatal(char *msg);
 static int _mmsvc_core_log_init_signal_set(void);
 static void _mmsvc_core_log_set_module_value(int index, GModule *module, gboolean value);
+static void _mmsvc_core_log_set_msg(char *msg);
+static char *_mmsvc_core_log_get_msg(void);
 static gboolean _mmsvc_core_log_get_module_opened(int index);
 static GModule *_mmsvc_core_log_get_module_value(int index);
 
@@ -77,6 +81,31 @@ static void _mmsvc_core_log_sig_abort(int signo)
 
 	if (SIG_ERR == signal(SIGABRT, SIG_DFL))
 		LOGE("SIGABRT andler: %s", strerror(errno));
+
+	static char client_name[256];
+	memset(client_name, '\0', sizeof(client_name));
+	snprintf(client_name, sizeof(client_name) - 1, "[client name] %s", mmsvc_core_config_get_instance()->get_hosts());
+	if (write(g_mused_log->log_fd, client_name, strlen(client_name)) != strlen(client_name))
+		LOGE("There was an error writing client name to testfile");
+	else if (write(g_mused_log->log_fd, "\n", 1) != 1)
+		LOGE("write %s", client_name);
+
+	static char client_pid[256];
+	memset(client_pid, '\0', sizeof(client_pid));
+	snprintf(client_pid, sizeof(client_pid) - 1, "[client pid] %lu", (unsigned long) getpid());
+	if (write(g_mused_log->log_fd, client_pid, strlen(client_pid)) != strlen(client_pid))
+		LOGE("There was an error writing client pid to testfile");
+	else if (write(g_mused_log->log_fd, "\n", 1) != 1)
+		LOGE("write %s", client_pid);
+
+	static char latest_called_api[256];
+	memset(latest_called_api, '\0', sizeof(latest_called_api));
+	snprintf(latest_called_api, sizeof(latest_called_api) - 1, "[client's latest called api] %s", _mmsvc_core_log_get_msg());
+
+	if (write(g_mused_log->log_fd, latest_called_api, strlen(latest_called_api)) != strlen(latest_called_api))
+		LOGE("There was an error writing client's latest called api to testfile");
+	else if (write(g_mused_log->log_fd, "\n", 1) != 1)
+		LOGE("write %s", latest_called_api);
 
 	abort();
 }
@@ -246,7 +275,8 @@ static void _mmsvc_core_log_set_log_fd(void)
 	(void) _mmsvc_core_log_fd_set_block(g_mused_log->log_fd);
 }
 
-static void _mmsvc_core_log_init_instance(void (*log)(char *), void (*fatal)(char *), void (*set_module_value) (int, GModule *, gboolean), gboolean(*get_module_opened) (int), GModule * (*get_module_value) (int))
+static void _mmsvc_core_log_init_instance(void (*log)(char *), void (*fatal)(char *), void (*set_module_value) (int, GModule *, gboolean),
+	gboolean(*get_module_opened) (int), GModule * (*get_module_value) (int), void (*set_msg) (char *), char * (*get_msg) (void))
 {
 	g_return_if_fail(log != NULL);
 	g_return_if_fail(fatal != NULL);
@@ -264,6 +294,8 @@ static void _mmsvc_core_log_init_instance(void (*log)(char *), void (*fatal)(cha
 	g_mused_log->get_module_value = get_module_value;
 	g_mused_log->timer = g_timer_new();
 	g_mused_log->count = 0;
+	g_mused_log->set_msg = set_msg;
+	g_mused_log->get_msg = get_msg;
 	g_timer_stop(g_mused_log->timer);
 	for (idx = 0; idx < MMSVC_CLIENT_MAX; idx++) {
 		g_mused_log->module_opened[idx] = false;
@@ -283,13 +315,10 @@ static void _mmsvc_core_log_monitor(char *msg)
 		return;
 	}
 
-	if (write(g_mused_log->log_fd, msg, strlen(msg)) != strlen(msg)) {
-		if (write(g_mused_log->log_fd, msg, strlen(msg)) != strlen(msg))
-			LOGE("There was an error writing to testfile");
-	} else {
-		if (write(g_mused_log->log_fd, "\n", 1) != 1)
-			LOGE("write %s", msg);
-	}
+	if (write(g_mused_log->log_fd, msg, strlen(msg)) != strlen(msg))
+		LOGE("There was an error writing to testfile");
+	else if (write(g_mused_log->log_fd, "\n", 1) != 1)
+		LOGE("write %s", msg);
 
 	if (g_mused_log->count != 0)
 		g_timer_stop(g_mused_log->timer);
@@ -315,6 +344,22 @@ static void _mmsvc_core_log_set_module_value(int index, GModule *module, gboolea
 	LOGD("module: %p", g_mused_log->module[index]);
 }
 
+static void _mmsvc_core_log_set_msg(char *msg)
+{
+	g_return_if_fail(g_mused_log != NULL);
+	g_return_if_fail(msg != NULL);
+
+	g_mused_log->buf = g_strdup(msg);
+}
+
+static char *_mmsvc_core_log_get_msg(void)
+{
+	g_return_if_fail(g_mused_log != NULL);
+	g_return_val_if_fail(g_mused_log->buf != NULL, NULL);
+
+	return g_mused_log->buf;
+}
+
 static gboolean _mmsvc_core_log_get_module_opened(int index)
 {
 	g_return_val_if_fail(g_mused_log != NULL, false);
@@ -334,7 +379,7 @@ mmsvc_core_log_t *mmsvc_core_log_get_instance(void)
 {
 	if (g_mused_log == NULL)
 		_mmsvc_core_log_init_instance(_mmsvc_core_log_monitor, _mmsvc_core_log_fatal, _mmsvc_core_log_set_module_value,
-		_mmsvc_core_log_get_module_opened, _mmsvc_core_log_get_module_value);
+		_mmsvc_core_log_get_module_opened, _mmsvc_core_log_get_module_value, _mmsvc_core_log_set_msg, _mmsvc_core_log_get_msg);
 
 	return g_mused_log;
 }
@@ -345,7 +390,7 @@ void mmsvc_core_log_init(void)
 
 	if (g_mused_log == NULL)
 		_mmsvc_core_log_init_instance(_mmsvc_core_log_monitor, _mmsvc_core_log_fatal, _mmsvc_core_log_set_module_value,
-		_mmsvc_core_log_get_module_opened, _mmsvc_core_log_get_module_value);
+		_mmsvc_core_log_get_module_opened, _mmsvc_core_log_get_module_value, _mmsvc_core_log_set_msg, _mmsvc_core_log_get_msg);
 
 	_mmsvc_core_log_set_log_fd();
 	_mmsvc_core_log_init_signals();
