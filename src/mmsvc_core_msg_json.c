@@ -22,6 +22,7 @@
 #include <json.h>
 #include <json_tokener.h>
 #include "mmsvc_core_msg_json.h"
+#include "mmsvc_core_log.h"
 #include "mmsvc_core_internal.h"
 
 static json_object *_mmsvc_core_msg_json_find_obj(json_object * jobj, char *find_key)
@@ -155,6 +156,7 @@ char *mmsvc_core_msg_json_factory_new(int api, const char *arg_name, int64_t arg
 
 	jsonMsg = json_object_to_json_string(jobj);
 	sndMsg = g_strdup(jsonMsg);
+	mmsvc_core_log_get_instance()->set_json_msg(sndMsg);
 	LOGD("json msg : %s\n", sndMsg);
 
 	json_object_put(jobj);
