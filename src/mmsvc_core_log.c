@@ -21,6 +21,9 @@
 
 #include "mmsvc_core_internal.h"
 #include "mmsvc_core_log.h"
+#ifndef __USE_GNU
+#define __USE_GNU /* for gregs */
+#endif
 #include <ucontext.h>
 
 /* Signals */
@@ -204,6 +207,9 @@ static void _mmsvc_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 {
 	void *trace[TUNABLE_CALLER_DEPTH];
 	int tracesize;
+	int i;
+	char **strings = NULL;
+	ucontext_t *uctxt = NULL;
 
 	g_return_if_fail(si != NULL);
 	g_return_if_fail(arg != NULL);
@@ -216,11 +222,6 @@ static void _mmsvc_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 	if (tracesize < 0)
 		LOGE("backtrace error: %s", strerror(errno));
 
-	#if defined(REG_EIP)
-	int i;
-	char **strings = NULL;
-	/* overwrite sigaction with caller's address for x86*/
-	ucontext_t *uctxt = NULL;
 	uctxt = (ucontext_t *) arg;
 
 	if (!uctxt) {
@@ -228,18 +229,21 @@ static void _mmsvc_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 		return;
 	}
 
+	#if defined(REG_EIP) /*eip is the instruction pointer register, which contains the address of the location immediately following the current instruction in 32bit mode*/
 	trace[1] = (void *) uctxt->uc_mcontext.gregs[REG_EIP];
+	#elif defined(REG_RIP) /* rip is the instruction pointer register, which contains the address of the location immediately following the current instruction in 64bit mode*/
+	trace[1] = (void *) uctxt->uc_mcontext.gregs[REG_RIP];
+	#endif
 	strings = backtrace_symbols(trace, tracesize);
 	if (strings == NULL)
 		LOGE("backtrace_symbols error: %s", strerror(errno));
 
 	/* skip the first stack frame because it just points here. */
 	for (i = 1; i < tracesize; ++i) {
-		LOGE("[%u] %s", i-1, strings[i]);
+		LOGE("[%u] %s", i - 1, strings[i]);
 		if (g_mused_log)
 			g_mused_log->fatal(strings[i]);
 	}
-	#endif
 
 	LOGE("----------END MUSED DYING MESSAGE----------");
 
