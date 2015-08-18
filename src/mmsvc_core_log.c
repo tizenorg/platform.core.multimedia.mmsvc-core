@@ -47,7 +47,6 @@ static mmsvc_core_log_t *g_mused_log = NULL;
 volatile unsigned int received_signal_flags = 0;
 
 static void _mmsvc_core_log_sig_child(int signo);
-static char *_mmsvc_core_log_prepare_core(void);
 static void _mmsvc_core_log_sig_abort(int signo);
 static void _mmsvc_core_log_sig_terminate(int signo);
 static void _mmsvc_core_log_sig_restart(int signo);
@@ -72,24 +71,6 @@ static void _mmsvc_core_log_sig_child(int signo)
 		LOGE("SIGCHLD handler: %s", strerror(errno));
 }
 
-static char *_mmsvc_core_log_prepare_core(void)
-{
-	int result = chdir("/");
-	static char dir[256];
-
-	memset(dir, '\0', sizeof(dir));
-	snprintf(dir, sizeof(dir)-1, "%s/mused_%lu", MUSED_DIR, (unsigned long) getpid());
-
-	if (mkdir(dir, 0700) < 0) {
-		LOGE("unable to create directory '%s' for coredump: %s", dir, strerror(errno));
-	} else {
-		result = chdir(dir);
-		LOGD("result = %d", result);
-	}
-
-	return dir;
-}
-
 static void _mmsvc_core_log_sig_abort(int signo)
 {
 	received_signal_flags |= RECEIVED_SIG_ABORT;
@@ -97,7 +78,6 @@ static void _mmsvc_core_log_sig_abort(int signo)
 	if (SIG_ERR == signal(SIGABRT, SIG_DFL))
 		LOGE("SIGABRT andler: %s", strerror(errno));
 
-	LOGD("mused received SIGABRT signal, generating core file in %s", _mmsvc_core_log_prepare_core());
 	abort();
 }
 
@@ -163,7 +143,7 @@ static int _mmsvc_core_log_init_signal_set(void)
 	if (SIG_ERR == signal(SIGCHLD, _mmsvc_core_log_sig_child) || SIG_ERR == signal(SIGHUP, _mmsvc_core_log_sig_restart)
 		|| SIG_ERR == signal(SIGINT, _mmsvc_core_log_sig_terminate) || SIG_ERR == signal(SIGQUIT, _mmsvc_core_log_sig_terminate)
 		|| SIG_ERR == signal(SIGILL, _mmsvc_core_log_sig_terminate) || SIG_ERR == signal(SIGFPE, _mmsvc_core_log_sig_terminate)
-		|| SIG_ERR == signal(SIGABRT, _mmsvc_core_log_sig_abort) 	|| SIG_ERR == signal(SIGSEGV, _mmsvc_core_log_sig_terminate)
+		|| SIG_ERR == signal(SIGABRT, _mmsvc_core_log_sig_abort) || SIG_ERR == signal(SIGSEGV, _mmsvc_core_log_sig_terminate)
 		|| SIG_ERR == signal(SIGXCPU, _mmsvc_core_log_sig_terminate) || SIG_ERR == signal(SIGBUS, _mmsvc_core_log_sig_terminate)
 		|| SIG_ERR == signal(SIGALRM, SIG_IGN) || SIG_ERR == signal(SIGTERM, _mmsvc_core_log_sig_terminate)
 		|| SIG_ERR == signal(SIGURG, SIG_IGN) || SIG_ERR == signal(SIGSTKFLT, _mmsvc_core_log_sig_terminate)
@@ -247,9 +227,7 @@ static void _mmsvc_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 
 	LOGE("----------END MUSED DYING MESSAGE----------");
 
-	LOGE("exit(0) - caught segfault at address %p", si->si_addr);
-
-	exit(0);
+	_mmsvc_core_log_sig_abort(signo);
 }
 
 static void _mmsvc_core_log_set_log_fd(void)
@@ -306,10 +284,11 @@ static void _mmsvc_core_log_monitor(char *msg)
 	}
 
 	if (write(g_mused_log->log_fd, msg, strlen(msg)) != strlen(msg)) {
-		LOGE("There was an error writing to testfile");
+		if (write(g_mused_log->log_fd, msg, strlen(msg)) != strlen(msg))
+			LOGE("There was an error writing to testfile");
 	} else {
-		if (write(g_mused_log->log_fd, "\n", 1) == 1)
-			LOGD("write %s", msg);
+		if (write(g_mused_log->log_fd, "\n", 1) != 1)
+			LOGE("write %s", msg);
 	}
 
 	if (g_mused_log->count != 0)
@@ -324,8 +303,6 @@ static void _mmsvc_core_log_fatal(char *msg)
 	}
 
 	_mmsvc_core_log_monitor(msg);
-
-	exit(-1);
 }
 
 static void _mmsvc_core_log_set_module_value(int index, GModule *module, gboolean value)
