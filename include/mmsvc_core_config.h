@@ -57,6 +57,7 @@ typedef struct config
 	char* (*get_path)(int);
 	int (*get_gst_param_cnt)(void);
 	char* (*get_gst_param_str)(int);
+	char* (*get_hosts)(void);
 } config_t;
 
 /*mmsvc_core_config_init must be called before mmsvc_core_config_get_instance*/

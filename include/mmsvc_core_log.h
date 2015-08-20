@@ -41,6 +41,8 @@ typedef struct mmsvc_core_log {
 	void (*fatal)(char *);
 	void (*set_module_value) (int, GModule *, gboolean);
 	gboolean (*get_module_opened) (int);
+	void (*set_msg) (char *);
+	char* (*get_msg) (void);
 	GModule* (*get_module_value) (int);
 	gboolean module_opened[MMSVC_CLIENT_MAX];
 	GModule *module[MMSVC_CLIENT_MAX];

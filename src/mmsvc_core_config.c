@@ -28,8 +28,10 @@ static int _mmsvc_core_config_parser(void);
 static void _mmsvc_core_config_free(void);
 static char *_mmsvc_core_config_get_path(int api_client);
 static int _mmsvc_core_config_get_gst_param_cnt(void);
+static char *_mmsvc_core_config_get_hosts(void);
 static char *_mmsvc_core_config_get_gst_param_str(int idx);
-static void _mmsvc_core_config_init_instance(void (*free)(void), char* (*get_path)(int), int (*get_gst_param_cnt)(void), char* (*get_gst_param_str)(int));
+static void _mmsvc_core_config_init_instance(void (*free)(void), char* (*get_path)(int), int (*get_gst_param_cnt)(void),
+	char* (*get_gst_param_str)(int), char* (*get_hosts)(void));
 
 static int _mmsvc_core_config_parser(void)
 {
@@ -156,7 +158,7 @@ static void _mmsvc_core_config_free(void)
 	MMSVC_FREE(g_conf);
 }
 
-static void _mmsvc_core_config_init_instance(void (*free)(void), char* (*get_path)(int), int (*get_gst_param_cnt)(void), char* (*get_gst_param_str)(int))
+static void _mmsvc_core_config_init_instance(void (*free)(void), char* (*get_path)(int), int (*get_gst_param_cnt)(void), char* (*get_gst_param_str)(int), char* (*get_hosts)(void))
 {
 	g_return_if_fail(free != NULL);
 	g_return_if_fail(get_path != NULL);
@@ -171,14 +173,22 @@ static void _mmsvc_core_config_init_instance(void (*free)(void), char* (*get_pat
 	g_conf->get_path = get_path;
 	g_conf->get_gst_param_cnt= get_gst_param_cnt;
 	g_conf->get_gst_param_str = get_gst_param_str;
+	g_conf->get_hosts = get_hosts;
 	LOGD("conf: %0x2x", g_conf);
 
 	if (_mmsvc_core_config_parser() != 0)
 		LOGE("parser() error");
 }
 
+static char *_mmsvc_core_config_get_hosts(void)
+{
+	g_return_val_if_fail(g_conf->hosts != NULL, NULL);
+	return g_conf->hosts;
+}
+
 static int _mmsvc_core_config_get_gst_param_cnt(void)
 {
+	g_return_val_if_fail(g_conf != NULL, 0);
 	return g_conf->gst_param_cnt;
 }
 
@@ -199,7 +209,8 @@ static char *_mmsvc_core_config_get_path(int api_client)
 config_t *mmsvc_core_config_get_instance(void)
 {
 	if (g_conf == NULL)
-		_mmsvc_core_config_init_instance(_mmsvc_core_config_free, _mmsvc_core_config_get_path, _mmsvc_core_config_get_gst_param_cnt, _mmsvc_core_config_get_gst_param_str);
+		_mmsvc_core_config_init_instance(_mmsvc_core_config_free, _mmsvc_core_config_get_path, _mmsvc_core_config_get_gst_param_cnt,
+		_mmsvc_core_config_get_gst_param_str, _mmsvc_core_config_get_hosts);
 
 	return g_conf;
 }
@@ -208,6 +219,7 @@ void mmsvc_core_config_init(void)
 {
 	LOGD("Enter");
 	if (g_conf == NULL)
-		_mmsvc_core_config_init_instance(_mmsvc_core_config_free, _mmsvc_core_config_get_path, _mmsvc_core_config_get_gst_param_cnt, _mmsvc_core_config_get_gst_param_str);
+		_mmsvc_core_config_init_instance(_mmsvc_core_config_free, _mmsvc_core_config_get_path, _mmsvc_core_config_get_gst_param_cnt,
+		_mmsvc_core_config_get_gst_param_str, _mmsvc_core_config_get_hosts);
 	LOGD("Leave");
 }
