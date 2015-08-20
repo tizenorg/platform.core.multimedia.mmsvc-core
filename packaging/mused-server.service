@@ -4,6 +4,7 @@ Description=Mused server
 [Service]
 Type=forking
 ExecStart=/usr/bin/mused-server
+Restart=always
 MemoryLimit=100M
 EnvironmentFile=/run/tizen-system-env
 
