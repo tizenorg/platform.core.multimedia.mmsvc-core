@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-#define MM_URI_MAX_LENGTH 100
+#define MM_URI_MAX_LENGTH 4096
 #define MM_MSG_MAX_LENGTH 1024*1024
 
 typedef struct __Client * Client;
