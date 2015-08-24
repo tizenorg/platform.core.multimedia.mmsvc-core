@@ -47,7 +47,7 @@ GModule *mmsvc_core_module_load(int api_client)
 	return module;
 }
 
-void mmsvc_core_module_dll_symbol(int cmd, Client client)
+void mmsvc_core_module_dll_symbol_dispatch(int cmd, Client client)
 {
 	MMSVC_MODULE_DispatchFunc *dispatcher = NULL;
 

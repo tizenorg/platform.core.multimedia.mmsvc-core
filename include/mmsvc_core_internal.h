@@ -78,6 +78,7 @@ extern "C" {
 #define EDGETRIGGERED 	0x20
 
 #define DISPATCHER "dispatcher"
+#define CMDDISPATCHER "cmddispatcher"
 #define MMSVC_FREE(src) { if(src) {g_free(src); src = NULL;} }
 
 #ifdef __cplusplus
