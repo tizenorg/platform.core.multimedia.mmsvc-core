@@ -56,6 +56,7 @@ typedef struct __Client{
 	int msg_offset;
 	int api_client;
 	gpointer cust_data;
+	int pipefd[2]; /* read / write */
 } _Client;
 
 typedef struct {

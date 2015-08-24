@@ -39,9 +39,24 @@ typedef struct {
 	/* Dynamic allocated data area */
 } RecvData_t;
 
+static void _mmsvc_core_ipc_client_cleanup(Client client);
 static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data);
 static gpointer _mmsvc_core_ipc_data_worker(gpointer data);
 static RecvData_t *_mmsvc_core_ipc_new_qdata(char **recvBuff, int recvSize, int *allocSize);
+
+static void _mmsvc_core_ipc_client_cleanup(Client client)
+{
+	g_return_if_fail(client != NULL);
+
+	g_queue_free(client->ch[MUSED_CHANNEL_DATA].queue);
+	client->ch[MUSED_CHANNEL_DATA].queue = NULL;
+	g_cond_broadcast(&client->ch[MUSED_CHANNEL_DATA].cond);
+	g_thread_join(client->ch[MUSED_CHANNEL_DATA].p_gthread);
+	g_mutex_clear(&client->ch[MUSED_CHANNEL_DATA].mutex);
+	g_cond_clear(&client->ch[MUSED_CHANNEL_DATA].cond);
+	LOGD("worker exit");
+	mmsvc_core_worker_exit(client);
+}
 
 static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 {
@@ -59,12 +74,10 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 		len = mmsvc_core_ipc_recv_msg(client->ch[MUSED_CHANNEL_MSG].fd, client->recvMsg);
 		if (len <= 0) {
 			LOGE("recv : %s (%d)", strerror(errno), errno);
-
-			LOGD("close module");
-			/* mmsvc_core_module_close(client); don't close the dlsym*/
-
-			LOGD("worker exit");
-			mmsvc_core_worker_exit(client);
+			if(write(client->pipefd[1], "q", 1) == -1)
+				LOGE("Error - write pipefd quit");
+			else
+				LOGD("Tell client to quit, async signal (%c)", mmsvc_core_client_read_pipe_fd(client));
 			break;
 		} else {
 			parse_len = len;
@@ -96,24 +109,17 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 							LOGD("client fd: %d module: %p",
 									client->ch[MUSED_CHANNEL_MSG].fd,
 									client->ch[MUSED_CHANNEL_MSG].module);
-							mmsvc_core_module_dll_symbol(cmd, client);
+							mmsvc_core_module_dll_symbol_dispatch(cmd, client);
 							break;
 						}
 					case API_DESTROY:
 						LOGD("DESTROY");
-						mmsvc_core_module_dll_symbol(cmd, client);
-						g_queue_free(client->ch[MUSED_CHANNEL_DATA].queue);
-						client->ch[MUSED_CHANNEL_DATA].queue = NULL;
-						g_cond_broadcast(&client->ch[MUSED_CHANNEL_DATA].cond);
-						g_thread_join(client->ch[MUSED_CHANNEL_DATA].p_gthread);
-						g_mutex_clear(&client->ch[MUSED_CHANNEL_DATA].mutex);
-						g_cond_clear(&client->ch[MUSED_CHANNEL_DATA].cond);
-						/* mmsvc_core_module_close(client); don't close the dlsym*/
-						mmsvc_core_worker_exit(client);
+						mmsvc_core_module_dll_symbol_dispatch(cmd, client);
+						_mmsvc_core_ipc_client_cleanup(client);
 						break;
 					default:
 						LOGD("[default] client->module: %p", client->ch[MUSED_CHANNEL_MSG].module);
-						mmsvc_core_module_dll_symbol(cmd, client);
+						mmsvc_core_module_dll_symbol_dispatch(cmd, client);
 						break;
 					}
 				} else {
@@ -160,6 +166,10 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 				recvBuff, recvLen, currLen, allocSize);
 		if (recvLen <= 0) {
 			LOGE("recv : %s (%d)", strerror(errno), errno);
+			#if 0
+			mmsvc_core_module_dll_symbol_dispatch(API_DESTROY, client);
+			_mmsvc_core_ipc_client_cleanup(client);
+			#endif
 			break;
 		} else {
 			if (client) {
@@ -208,6 +218,30 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 	return NULL;
 }
 
+static RecvData_t *_mmsvc_core_ipc_new_qdata(char **recvBuff, int recvSize, int *allocSize)
+{
+	int qDataSize;
+	RecvData_t *qData = (RecvData_t *)*recvBuff;
+	g_return_if_fail(recvBuff);
+
+	if (qData->header.marker != MUSED_DATA_HEAD) {
+		LOGE("Invalid data header");
+		return NULL;
+	}
+	qDataSize = qData->header.size + sizeof(RecvDataHead_t);
+	if (qDataSize > recvSize) {
+		LOGD("not complated recv");
+		if (qDataSize > *allocSize) {
+			LOGD("Realloc %d -> %d", *allocSize, qDataSize);
+			*allocSize = qDataSize;
+			*recvBuff = g_renew(char, *recvBuff, *allocSize);
+		}
+		return NULL;
+	}
+
+	return qData;
+}
+
 gboolean mmsvc_core_ipc_job_function(mmsvc_core_workqueue_job_t *job)
 {
 	LOGD("Enter");
@@ -221,10 +255,7 @@ gboolean mmsvc_core_ipc_job_function(mmsvc_core_workqueue_job_t *job)
 	LOGD("[%p] client->fd : %d", client, client->ch[MUSED_CHANNEL_MSG].fd);
 
 	client->ch[MUSED_CHANNEL_MSG].p_gthread = g_thread_new(NULL, _mmsvc_core_ipc_dispatch_worker, (gpointer)client);
-	if (!client->ch[MUSED_CHANNEL_MSG].p_gthread) {
-		LOGE("Error - g_thread_new");
-		return FALSE;
-	}
+	g_return_val_if_fail(client->ch[MUSED_CHANNEL_MSG].p_gthread != NULL, FALSE);
 
 	MMSVC_FREE(job);
 
@@ -245,12 +276,7 @@ gboolean mmsvc_core_ipc_data_job_function(mmsvc_core_workqueue_job_t *job)
 	LOGD("data channel fd : %d", fd);
 
 	g_thread_new(NULL, _mmsvc_core_ipc_data_worker, (gpointer)fd);
-#if 0
-	if (!client->p_gthread) {
-		LOGE("Error - g_thread_new");
-		return FALSE;
-	}
-#endif
+
 	MMSVC_FREE(job);
 
 	LOGD("Leave");
@@ -276,7 +302,7 @@ int mmsvc_core_ipc_recv_msg(int sock_fd, char *msg)
 	g_return_val_if_fail(msg != NULL, ret);
 
 	if ((ret = recv(sock_fd, msg, MM_MSG_MAX_LENGTH, 0)) < 0)
-		LOGE("received msg");
+		LOGE("fail to receive msg");
 
 	return ret;
 }
@@ -292,35 +318,11 @@ int mmsvc_core_ipc_push_data(int sock_fd, const char *data, int size, int data_i
 	header.size = size;
 
 	if ((ret = send(sock_fd, &header, sizeof(RecvDataHead_t), 0)) < 0)
-		LOGE("send msg failed");
+		LOGE("fail to send msg");
 	if ((ret += send(sock_fd, data, size, 0)) < 0)
-		LOGE("send msg failed");
+		LOGE("fail to send msg");
 
 	return ret;
-}
-
-static RecvData_t *_mmsvc_core_ipc_new_qdata(char **recvBuff, int recvSize, int *allocSize)
-{
-	int qDataSize;
-	RecvData_t *qData = (RecvData_t *)*recvBuff;
-	g_return_if_fail(recvBuff);
-
-	if (qData->header.marker != MUSED_DATA_HEAD) {
-		LOGE("Invalid data header");
-		return NULL;
-	}
-	qDataSize = qData->header.size + sizeof(RecvDataHead_t);
-	if (qDataSize > recvSize) {
-		LOGD("not complated recv");
-		if (qDataSize > *allocSize) {
-			LOGD("Realloc %d -> %d", *allocSize, qDataSize);
-			*allocSize = qDataSize;
-			*recvBuff = g_renew(char, *recvBuff, *allocSize);
-		}
-		return NULL;
-	}
-
-	return qData;
 }
 
 void mmsvc_core_ipc_delete_data(char *data)
@@ -329,9 +331,8 @@ void mmsvc_core_ipc_delete_data(char *data)
 	g_return_if_fail(data);
 
 	qData = (RecvData_t *)(data - sizeof(RecvDataHead_t));
-	if (qData && qData->header.marker == MUSED_DATA_HEAD) {
+	if (qData && qData->header.marker == MUSED_DATA_HEAD)
 		MMSVC_FREE(qData);
-	}
 }
 
 char *mmsvc_core_ipc_get_data(Client client)

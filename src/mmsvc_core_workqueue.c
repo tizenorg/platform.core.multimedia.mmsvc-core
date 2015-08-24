@@ -34,15 +34,15 @@ static void *_mmsvc_core_workqueue_worker_function(void *ptr)
 
 	while (1) {
 		/* Wait until we get notified. */
-		pthread_mutex_lock(&worker->workqueue->jobs_mutex);
-		while (worker->workqueue->waiting_jobs == NULL) {
+		pthread_mutex_lock(&g_workqueue->jobs_mutex);
+		while (g_workqueue->waiting_jobs == NULL) {
 			/* If we're supposed to terminate, break out of our continuous loop. */
 			if (worker->terminate) {
 				LOGD("worker is terminated");
 				break;
 			}
 
-			pthread_cond_wait(&worker->workqueue->jobs_cond, &worker->workqueue->jobs_mutex);
+			pthread_cond_wait(&g_workqueue->jobs_cond, &g_workqueue->jobs_mutex);
 		}
 
 		/* If we're supposed to terminate, break out of our continuous loop. */
@@ -51,11 +51,11 @@ static void *_mmsvc_core_workqueue_worker_function(void *ptr)
 			break;
 		}
 
-		job = worker->workqueue->waiting_jobs;
+		job = g_workqueue->waiting_jobs;
 		if (job != NULL)
-			LL_REMOVE(job, worker->workqueue->waiting_jobs);
+			LL_REMOVE(job, g_workqueue->waiting_jobs);
 
-		pthread_mutex_unlock(&worker->workqueue->jobs_mutex);
+		pthread_mutex_unlock(&g_workqueue->jobs_mutex);
 
 		/* If we didn't get a job, then there's nothing to do at this time. */
 		if (job == NULL)
@@ -65,7 +65,7 @@ static void *_mmsvc_core_workqueue_worker_function(void *ptr)
 		job->job_function(job);
 	}
 
-	pthread_mutex_unlock(&worker->workqueue->jobs_mutex);
+	pthread_mutex_unlock(&g_workqueue->jobs_mutex);
 	MMSVC_FREE(worker);
 
 	pthread_exit(NULL);
@@ -73,20 +73,21 @@ static void *_mmsvc_core_workqueue_worker_function(void *ptr)
 
 static void _mmsvc_core_workqueue_shutdown(void)
 {
-	mmsvc_core_workqueue_worker_t *worker = NULL;
-	g_return_if_fail(g_workqueue != NULL);
 	LOGD("Enter");
 
-	/* Set all workers to terminate. */
-	for (worker = g_workqueue->workers; worker != NULL; worker = worker->next) {
-		worker->terminate = 1;
-	}
+	mmsvc_core_workqueue_worker_t *worker = NULL;
+	g_return_if_fail(g_workqueue != NULL);
 
-	/* Remove all workers and jobs from the work queue.
-	 * wake up all workers so that they will terminate. */
-	pthread_mutex_lock(&g_workqueue->jobs_mutex);
+	/* Set all workers to terminate. */
+	for (worker = g_workqueue->workers; worker != NULL; worker = worker->next)
+		worker->terminate = 1; /* shutdown notification */
+
+	/* Remove all workers and jobs from the work queue. Wake up all workers so that they will terminate. */
 	g_workqueue->workers = NULL;
 	g_workqueue->waiting_jobs = NULL;
+	pthread_mutex_lock(&g_workqueue->jobs_mutex);
+	LOGD("pthread_join(workqueue)");
+	pthread_join(g_workqueue->thread, NULL);
 	pthread_cond_broadcast(&g_workqueue->jobs_cond);
 	pthread_mutex_unlock(&g_workqueue->jobs_mutex);
 	LOGD("Leave");
@@ -126,8 +127,6 @@ mmsvc_core_workqueue_workqueue_t *mmsvc_core_workqueue_get_instance(void)
 int mmsvc_core_workqueue_init(int numWorkers)
 {
 	int i;
-	mmsvc_core_workqueue_worker_t *worker;
-
 	pthread_cond_t blank_cond = PTHREAD_COND_INITIALIZER;
 	pthread_mutex_t blank_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -139,24 +138,19 @@ int mmsvc_core_workqueue_init(int numWorkers)
 
 	if (numWorkers < 1)
 		numWorkers = 1;
-	memset(g_workqueue, 0, sizeof(*g_workqueue));
 	memcpy(&g_workqueue->jobs_mutex, &blank_mutex, sizeof(g_workqueue->jobs_mutex));
 	memcpy(&g_workqueue->jobs_cond, &blank_cond, sizeof(g_workqueue->jobs_cond));
 
 	for (i = 0; i < numWorkers; i++) {
-		worker = malloc(sizeof(mmsvc_core_workqueue_worker_t));
-		if (worker == NULL) {
-			LOGE("Failed to allocate all workers");
-			return 1;
-		}
-		memset(worker, 0, sizeof(*worker));
-		worker->workqueue = g_workqueue;
-		if (pthread_create(&worker->thread, NULL, _mmsvc_core_workqueue_worker_function, (void *)worker)) {
+		g_workqueue->workers = calloc(1, sizeof(mmsvc_core_workqueue_worker_t));
+		g_return_val_if_fail(g_workqueue->workers != NULL, 1);
+
+		if (pthread_create(&g_workqueue->thread, NULL, _mmsvc_core_workqueue_worker_function, (void *)g_workqueue->workers)) {
 			LOGE("Failed to start all worker threads");
-			MMSVC_FREE(worker);
+			MMSVC_FREE(g_workqueue->workers);
 			return 1;
 		}
-		LL_ADD(worker, worker->workqueue->workers);
+		LL_ADD(g_workqueue->workers, g_workqueue->workers);
 	}
 
 	_mmsvc_core_workqueue_init_instance(_mmsvc_core_workqueue_shutdown, _mmsvc_core_workqueue_add_job);

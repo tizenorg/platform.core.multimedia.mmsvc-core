@@ -27,14 +27,13 @@ typedef struct mmsvc_core_workqueue_workqueue {
 	struct mmsvc_core_workqueue_job *waiting_jobs;
 	pthread_mutex_t jobs_mutex;
 	pthread_cond_t jobs_cond;
+	pthread_t thread;
 	void (*shutdown)(void);
 	void (*add_job)(mmsvc_core_workqueue_job_t *);
 } mmsvc_core_workqueue_workqueue_t;
 
 typedef struct mmsvc_core_workqueue_worker {
-	pthread_t thread;
 	int terminate;
-	struct mmsvc_core_workqueue_workqueue *workqueue;
 	struct mmsvc_core_workqueue_worker *prev;
 	struct mmsvc_core_workqueue_worker *next;
 } mmsvc_core_workqueue_worker_t;

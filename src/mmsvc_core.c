@@ -113,14 +113,12 @@ static bool _mmsvc_core_attach_server(int fd, MMSVC_CORE_ClientCallback callback
 	GSource *src = NULL;
 
 	channel = g_io_channel_unix_new(fd);
-	if (!channel) {
+	if (!channel)
 		return false;
-	}
 
 	src = g_io_create_watch(channel, G_IO_IN);
-	if (!src) {
+	if (!src)
 		return false;
-	}
 
 	g_source_set_callback(src, (GSourceFunc) callback, param, NULL);
 
@@ -244,8 +242,6 @@ int _mmsvc_core_server_new(mused_channel_e channel)
 	if (_mmsvc_core_set_nonblocking(fd) < 0)
 		LOGE("failed to set server socket to non-blocking");
 
-	LOGD("Leave");
-
 	return fd;
 }
 
@@ -307,6 +303,16 @@ static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
 
 		memset(client, 0, sizeof(_Client));
 		client->ch[channel].fd = client_sockfd;
+		if (pipe(client->pipefd)) {
+			LOGE("failed to allocate client pipes!");
+			return FALSE;
+		}
+		#if 0
+		if (write(client->pipefd[1], "a", 1) == -1)
+			LOGE("Error - write pipefd accept");
+		else
+			LOGD("Sent accept along with the connection");
+		#endif
 	}
 
 	if ((job = malloc(sizeof(mmsvc_core_workqueue_job_t))) == NULL) {
@@ -373,10 +379,9 @@ static int _mmsvc_core_client_new(mused_channel_e channel)
 	int len, ret = -1;
 	int sockfd;
 
+	LOGD("Enter");
 	if (channel >= MUSED_CHANNEL_MAX)
 		return -1;
-
-	LOGD("Enter");
 
 	/*Create socket*/
 	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
@@ -462,24 +467,28 @@ void mmsvc_core_connection_close(int sock_fd)
 		shutdown(sock_fd, SHUT_RDWR);
 		close(sock_fd);
 	}
+}
 
-	LOGD("Leave");
+char mmsvc_core_client_read_pipe_fd(Client client)
+{
+	g_return_val_if_fail(client, NULL);
+	char cmd;
+	if (read(client->pipefd[0], &cmd, 1) != -1)
+		LOGD("read pipefd: %c", cmd);
+	return cmd;
 }
 
 void mmsvc_core_worker_exit(Client client)
 {
 	LOGD("Enter");
-	if (!client) {
-		LOGE("Error - null client");
-		return;
-	}
+	g_return_if_fail(client);
 
 	mmsvc_core_connection_close(client->ch[MUSED_CHANNEL_MSG].fd);
 	mmsvc_core_connection_close(client->ch[MUSED_CHANNEL_DATA].fd);
-	if (!client->ch[MUSED_CHANNEL_MSG].p_gthread) {
-		LOGE("Error - null p_gthread");
-		return;
-	}
+	mmsvc_core_connection_close(client->pipefd[0]);
+	mmsvc_core_connection_close(client->pipefd[1]);
+
+	g_return_if_fail(client->ch[MUSED_CHANNEL_MSG].p_gthread != NULL);
 	LOGD("%p thread exit\n", client->ch[MUSED_CHANNEL_MSG].p_gthread);
 	g_thread_unref(client->ch[MUSED_CHANNEL_MSG].p_gthread);
 
@@ -491,7 +500,7 @@ void mmsvc_core_worker_exit(Client client)
 	g_thread_exit(NULL);
 }
 
-unsigned mmsvc_core_get_atomic_uint()
+unsigned mmsvc_core_get_atomic_uint(void)
 {
 	static guint atom = 0;
 

@@ -22,6 +22,7 @@
 #include "mmsvc_core_internal.h"
 #include "mmsvc_core_config.h"
 #include "mmsvc_core_log.h"
+#include "mmsvc_core_workqueue.h"
 #ifndef __USE_GNU
 #define __USE_GNU /* for gregs */
 #endif
@@ -106,6 +107,8 @@ static void _mmsvc_core_log_sig_abort(int signo)
 		LOGE("There was an error writing client's latest called api to testfile");
 	else if (write(g_mused_log->log_fd, "\n", 1) != 1)
 		LOGE("write %s", latest_called_api);
+
+	mmsvc_core_workqueue_get_instance()->shutdown();
 
 	abort();
 }
