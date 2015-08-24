@@ -29,9 +29,10 @@ extern "C" {
 #include "mmsvc_core_internal.h"
 
 typedef gboolean (*MMSVC_MODULE_DispatchFunc) (Client client);
+typedef gboolean (*MMSVC_MODULE_CMD_DispatchFunc) (Client client);
 
 GModule * mmsvc_core_module_load(int api_client);
-void mmsvc_core_module_dll_symbol(int cmd, Client client);
+void mmsvc_core_module_dll_symbol_dispatch(int cmd, Client client);
 gboolean mmsvc_core_module_close(Client client);
 
 #ifdef _cplusplus
