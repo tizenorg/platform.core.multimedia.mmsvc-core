@@ -39,9 +39,25 @@ typedef struct {
 	/* Dynamic allocated data area */
 } RecvData_t;
 
+static void _mmsvc_core_ipc_client_cleanup(int cmd, Client client);
 static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data);
 static gpointer _mmsvc_core_ipc_data_worker(gpointer data);
 static RecvData_t *_mmsvc_core_ipc_new_qdata(char **recvBuff, int recvSize, int *allocSize);
+
+static void _mmsvc_core_ipc_client_cleanup(int cmd, Client client)
+{
+	g_return_if_fail(client != NULL);
+
+	mmsvc_core_module_dll_symbol_dispatch(cmd, client);
+	g_queue_free(client->ch[MUSED_CHANNEL_DATA].queue);
+	client->ch[MUSED_CHANNEL_DATA].queue = NULL;
+	g_cond_broadcast(&client->ch[MUSED_CHANNEL_DATA].cond);
+	g_thread_join(client->ch[MUSED_CHANNEL_DATA].p_gthread);
+	g_mutex_clear(&client->ch[MUSED_CHANNEL_DATA].mutex);
+	g_cond_clear(&client->ch[MUSED_CHANNEL_DATA].cond);
+	LOGD("worker exit");
+	mmsvc_core_worker_exit(client);
+}
 
 static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 {
@@ -59,12 +75,7 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 		len = mmsvc_core_ipc_recv_msg(client->ch[MUSED_CHANNEL_MSG].fd, client->recvMsg);
 		if (len <= 0) {
 			LOGE("recv : %s (%d)", strerror(errno), errno);
-
-			LOGD("close module");
-			/* mmsvc_core_module_close(client); don't close the dlsym*/
-
-			LOGD("worker exit");
-			mmsvc_core_worker_exit(client);
+			_mmsvc_core_ipc_client_cleanup(API_DESTROY, client);
 			break;
 		} else {
 			parse_len = len;
@@ -96,24 +107,16 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 							LOGD("client fd: %d module: %p",
 									client->ch[MUSED_CHANNEL_MSG].fd,
 									client->ch[MUSED_CHANNEL_MSG].module);
-							mmsvc_core_module_dll_symbol(cmd, client);
+							mmsvc_core_module_dll_symbol_dispatch(cmd, client);
 							break;
 						}
 					case API_DESTROY:
 						LOGD("DESTROY");
-						mmsvc_core_module_dll_symbol(cmd, client);
-						g_queue_free(client->ch[MUSED_CHANNEL_DATA].queue);
-						client->ch[MUSED_CHANNEL_DATA].queue = NULL;
-						g_cond_broadcast(&client->ch[MUSED_CHANNEL_DATA].cond);
-						g_thread_join(client->ch[MUSED_CHANNEL_DATA].p_gthread);
-						g_mutex_clear(&client->ch[MUSED_CHANNEL_DATA].mutex);
-						g_cond_clear(&client->ch[MUSED_CHANNEL_DATA].cond);
-						/* mmsvc_core_module_close(client); don't close the dlsym*/
-						mmsvc_core_worker_exit(client);
+						_mmsvc_core_ipc_client_cleanup(API_DESTROY, client);
 						break;
 					default:
 						LOGD("[default] client->module: %p", client->ch[MUSED_CHANNEL_MSG].module);
-						mmsvc_core_module_dll_symbol(cmd, client);
+						mmsvc_core_module_dll_symbol_dispatch(cmd, client);
 						break;
 					}
 				} else {
