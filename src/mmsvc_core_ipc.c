@@ -59,10 +59,13 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 		len = mmsvc_core_ipc_recv_msg(client->ch[MUSED_CHANNEL_MSG].fd, client->recvMsg);
 		if (len <= 0) {
 			LOGE("recv : %s (%d)", strerror(errno), errno);
-
-			LOGD("close module");
-			/* mmsvc_core_module_close(client); don't close the dlsym*/
-
+			mmsvc_core_module_dll_symbol(API_DESTROY, client);
+			g_queue_free(client->ch[MUSED_CHANNEL_DATA].queue);
+			client->ch[MUSED_CHANNEL_DATA].queue = NULL;
+			g_cond_broadcast(&client->ch[MUSED_CHANNEL_DATA].cond);
+			g_thread_join(client->ch[MUSED_CHANNEL_DATA].p_gthread);
+			g_mutex_clear(&client->ch[MUSED_CHANNEL_DATA].mutex);
+			g_cond_clear(&client->ch[MUSED_CHANNEL_DATA].cond);
 			LOGD("worker exit");
 			mmsvc_core_worker_exit(client);
 			break;
