@@ -81,6 +81,10 @@ static void _mmsvc_core_workqueue_shutdown(void)
 	/* Set all workers to terminate. */
 	for (worker = g_workqueue->workers; worker != NULL; worker = worker->next)
 		worker->terminate = 1; /* shutdown notification */
+	#if 0
+	if (g_workqueue->waiting_jobs->user_data)
+		mmsvc_core_cmd_dispatch(g_workqueue->waiting_jobs->user_data, MUSED_DOMAIN_EVENT_DUMP);
+	#endif
 
 	/* Remove all workers and jobs from the work queue. Wake up all workers so that they will terminate. */
 	g_workqueue->workers = NULL;
