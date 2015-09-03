@@ -22,6 +22,7 @@
 #ifndef __MMSVC_CORE_PRIVATE_H__
 #define __MMSVC_CORE_PRIVATE_H__
 
+#include <stdint.h>
 #include <glib.h>
 #include <gmodule.h>
 
@@ -56,6 +57,7 @@ typedef struct __Client{
 	int msg_offset;
 	int api_client;
 	gpointer cust_data;
+	intptr_t handle;
 } _Client;
 
 typedef struct {
