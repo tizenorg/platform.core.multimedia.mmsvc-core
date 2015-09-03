@@ -62,7 +62,7 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 {
 	int len, parse_len, cmd, api_client;
 	Client client = NULL;
-	int handle = 0;
+	intptr_t handle = 0;
 	mused_msg_parse_err_e err = MUSED_MSG_PARSE_ERROR_NONE;
 	g_return_val_if_fail(data != NULL, NULL);
 
@@ -74,7 +74,7 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 		len = mmsvc_core_ipc_recv_msg(client->ch[MUSED_CHANNEL_MSG].fd, client->recvMsg);
 		if (len <= 0) {
 			LOGE("recv : %s (%d)", strerror(errno), errno);
-			mmsvc_core_cmd_dispatch(client, MUSED_STATUS_SHUTDOWN);
+			mmsvc_core_cmd_dispatch(client, MUSED_DOMAIN_EVENT_SHUTDOWN);
 			_mmsvc_core_ipc_client_cleanup(client);
 		} else {
 			parse_len = len;
@@ -86,18 +86,12 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 			mmsvc_core_log_get_instance()->log(client->recvMsg);
 
 			while (client->msg_offset < len) {
-				if (mmsvc_core_msg_json_deserialize_len("api",
-							client->recvMsg + client->msg_offset,
-							&parse_len, &cmd, &err, MUSED_TYPE_INT)) {
-					if (mmsvc_core_msg_json_deserialize_len("handle",
-								client->recvMsg + client->msg_offset,
-								&parse_len, &handle, &err, MUSED_TYPE_POINTER))
-						LOGD("cmd: %d len: %d Message: %s", cmd, len, client->recvMsg);
+				if (mmsvc_core_msg_json_deserialize_len("api", client->recvMsg + client->msg_offset, &parse_len, &cmd, &err, MUSED_TYPE_INT)) {
+					if (mmsvc_core_msg_json_deserialize_len("handle", client->recvMsg + client->msg_offset, &parse_len, &handle, &err, MUSED_TYPE_POINTER))
+						client->handle = handle;
 					switch (cmd) {
 					case API_CREATE:
-						if (mmsvc_core_msg_json_deserialize_len("client",
-									client->recvMsg + client->msg_offset,
-									&parse_len, &api_client, &err, MUSED_TYPE_INT)) {
+						if (mmsvc_core_msg_json_deserialize_len("client", client->recvMsg + client->msg_offset, &parse_len, &api_client, &err, MUSED_TYPE_INT)) {
 							client->api_client = api_client;
 							client->ch[MUSED_CHANNEL_MSG].module = mmsvc_core_module_load(api_client);
 							client->ch[MUSED_CHANNEL_DATA].queue = g_queue_new();
@@ -295,7 +289,7 @@ int mmsvc_core_ipc_recv_msg(int sock_fd, char *msg)
 	g_return_val_if_fail(msg != NULL, ret);
 
 	if ((ret = recv(sock_fd, msg, MM_MSG_MAX_LENGTH, 0)) < 0)
-		LOGE("fail to receive msg");
+		LOGE("fail to receive msg (%s)", strerror(errno));
 
 	return ret;
 }
@@ -350,4 +344,10 @@ char *mmsvc_core_ipc_get_data(Client client)
 	}
 
 	return NULL;
+}
+
+intptr_t mmsvc_core_ipc_get_handle(Client client)
+{
+	g_return_val_if_fail(client, NULL);
+	return client->handle;
 }

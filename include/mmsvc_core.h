@@ -32,17 +32,13 @@ extern "C" {
 typedef struct __Client * Client;
 
 typedef enum {
-	MUSED_STATUS_SHUTDOWN,
-	/* MUSED_STATUS_DEBUG,
-	MUSED_STATUS_UNKNOWN,
-	MUSED_STATUS_ACTIVE,
-	MUSED_STATUS_INACTIVE,
-	MUSED_STATUS_ERROR.. */
-	MUSED_STATUS_MAX
-} mused_status_e;
+	MUSED_DOMAIN_EVENT_SHUTDOWN = 0,
+	MUSED_DOMAIN_EVENT_DEBUG_INFO_DUMP,
+	MUSED_DOMAIN_EVENT_MAX
+} mused_domain_event_e;
 
 int mmsvc_core_run(void);
-void mmsvc_core_cmd_dispatch(Client client, mused_status_e status);
+void mmsvc_core_cmd_dispatch(Client client, mused_domain_event_e ev);
 void mmsvc_core_connection_close(int sock_fd);
 int mmsvc_core_client_new(void);
 int mmsvc_core_client_new_data_ch(void);

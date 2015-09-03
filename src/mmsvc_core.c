@@ -180,16 +180,6 @@ static int _mmsvc_core_free(MMServer *server)
 	return retval;
 }
 
-gpointer mmsvc_core_main_loop(gpointer data)
-{
-	while (1) {
-		sleep(LOG_SLEEP_TIMER);
-		LOGD("polling %d\n", g_main_loop_is_running(g_loop));
-	}
-
-	return NULL;
-}
-
 int _mmsvc_core_server_new(mused_channel_e channel)
 {
 	int fd;
@@ -227,8 +217,6 @@ int _mmsvc_core_server_new(mused_channel_e channel)
 
 		if (bind(fd, (struct sockaddr *)&addr_un, sizeof(addr_un)) != 0)
 			LOGE("bind failed sock: %s", strerror(errno));
-		else
-			LOGE("bind failed sock: %s", strerror(errno));
 		close(fd);
 		return -1;
 	}
@@ -246,32 +234,6 @@ int _mmsvc_core_server_new(mused_channel_e channel)
 	return fd;
 }
 
-
-MMServer *mmsvc_core_new()
-{
-	int fd[MUSED_CHANNEL_MAX];
-	int i;
-
-	for (i = 0; i < MUSED_CHANNEL_MAX; i++) {
-		fd[i] = _mmsvc_core_server_new(i);
-		if (fd[i] < 0) {
-			LOGE("Failed to create socket server %d", i);
-			return NULL;
-		}
-	}
-
-	/* Initialize work queue */
-	if (mmsvc_core_workqueue_init(WORK_THREAD_NUM)) {
-		LOGE("mmsvc_core_new : Failed to initialize the workqueue");
-		for (i = 0; i < MUSED_CHANNEL_MAX; i++)
-			close(fd[i]);
-		mmsvc_core_workqueue_get_instance()->shutdown();
-		return NULL;
-	}
-
-	return _mmsvc_core_create_new_server_from_fd(fd, READ|PERSIST);
-}
-
 static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
 		GIOCondition condition, gpointer data)
 {
@@ -284,6 +246,7 @@ static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
 
 	Client client = NULL;
 	mmsvc_core_workqueue_job_t *job = NULL;
+
 
 	server_sockfd = g_io_channel_unix_get_fd(source);
 
@@ -332,38 +295,6 @@ out:
 	return FALSE;
 }
 
-int mmsvc_core_run()
-{
-	int ret = -1;
-
-	LOGD("Enter");
-
-	ret = _mmsvc_core_check_server_is_running();
-	if (ret == -1) {
-		return -1;
-	} else if (ret == 0) {
-		LOGE("Server is already running");
-		return 2;
-	}
-
-	/* Sigaction */
-	g_loop = g_main_loop_new(NULL, FALSE);
-
-	g_thread = g_thread_new("mmsvc_thread", mmsvc_core_main_loop, g_loop);
-
-	server = mmsvc_core_new();
-	if (!server) {
-		g_main_loop_unref(g_loop);
-		return 1;
-	}
-
-	LOGD("g_main_loop_run");
-	g_main_loop_run(g_loop);
-
-	LOGD("Leave");
-	return _mmsvc_core_free(server);
-}
-
 static int _mmsvc_core_client_new(mused_channel_e channel)
 {
 	struct sockaddr_un address;
@@ -404,19 +335,88 @@ static int _mmsvc_core_client_new(mused_channel_e channel)
 	return sockfd;
 }
 
-void mmsvc_core_cmd_dispatch(Client client, mused_status_e status)
+gpointer mmsvc_core_main_loop(gpointer data)
 {
-	MMSVC_MODULE_CMD_DispatchFunc *cmdDispatcher = NULL;
+	#if 0
+	while (1) {
+		sleep(LOG_SLEEP_TIMER);
+		LOGD("polling %d\n", g_main_loop_is_running(loop));
+	}
+	#endif
+
+	return NULL;
+}
+
+MMServer *mmsvc_core_new()
+{
+	int fd[MUSED_CHANNEL_MAX];
+	int i;
+
+	for (i = 0; i < MUSED_CHANNEL_MAX; i++) {
+		fd[i] = _mmsvc_core_server_new(i);
+		if (fd[i] < 0) {
+			LOGE("Failed to create socket server %d", i);
+			return NULL;
+		}
+	}
+
+	/* Initialize work queue */
+	if (mmsvc_core_workqueue_init(WORK_THREAD_NUM)) {
+		LOGE("mmsvc_core_new : Failed to initialize the workqueue");
+		for (i = 0; i < MUSED_CHANNEL_MAX; i++)
+			close(fd[i]);
+		mmsvc_core_workqueue_get_instance()->shutdown();
+		return NULL;
+	}
+
+	return _mmsvc_core_create_new_server_from_fd(fd, READ | PERSIST);
+}
+
+int mmsvc_core_run()
+{
+	int ret = -1;
+
+	LOGD("Enter");
+
+	ret = _mmsvc_core_check_server_is_running();
+	if (ret == -1) {
+		return -1;
+	} else if (ret == 0) {
+		LOGE("Server is already running");
+		return 2;
+	}
+
+	/* Sigaction */
+	g_loop = g_main_loop_new(NULL, FALSE);
+
+	g_thread = g_thread_new("mmsvc_thread", mmsvc_core_main_loop, g_loop);
+
+	server = mmsvc_core_new();
+	if (!server) {
+		g_main_loop_unref(g_loop);
+		return 1;
+	}
+
+	LOGD("g_main_loop_run");
+	g_main_loop_run(g_loop);
+
+	LOGD("Leave");
+	return _mmsvc_core_free(server);
+}
+
+void mmsvc_core_cmd_dispatch(Client client, mused_domain_event_e ev)
+{
+	MMSVC_MODULE_CMD_DispatchFunc *cmd_dispatcher = NULL;
 
 	g_return_if_fail(client->ch[MUSED_CHANNEL_MSG].module != NULL);
 
-	g_module_symbol(client->ch[MUSED_CHANNEL_MSG].module, CMD_DISPATCHER, (gpointer *)&cmdDispatcher);
+	g_module_symbol(client->ch[MUSED_CHANNEL_MSG].module, CMD_DISPATCHER, (gpointer *)&cmd_dispatcher);
 
-	if (cmdDispatcher && cmdDispatcher[status]) {
-		LOGD("cmd dispatcher: %p", cmdDispatcher);
-		cmdDispatcher[status](client);
+	if (cmd_dispatcher && cmd_dispatcher[ev]) {
+		LOGD("cmd_dispatcher: %p", cmd_dispatcher);
+		cmd_dispatcher[ev](client);
 	} else {
-		LOGE("error - cmd dispatcher");
+		LOGE("error - cmd_dispatcher");
 		return;
 	}
 }

@@ -43,6 +43,7 @@ int mmsvc_core_ipc_recv_msg(int sock_fd, char *msg);
 gboolean mmsvc_core_ipc_data_job_function(mmsvc_core_workqueue_job_t * job);
 int mmsvc_core_ipc_push_data(int sock_fd, const char *data, int size, int data_id);
 char *mmsvc_core_ipc_get_data(Client client);
+intptr_t mmsvc_core_ipc_get_handle(Client client);
 void mmsvc_core_ipc_delete_data(char *data);
 
 /**
