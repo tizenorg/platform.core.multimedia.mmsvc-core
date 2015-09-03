@@ -253,7 +253,7 @@ gboolean mmsvc_core_msg_json_deserialize_len(
 	case json_type_array:
 		LOGD("json_type_array (%s)", key);
 		int i, len;
-		int *int_data = (int *)data;
+		intptr_t *int_data = (intptr_t *)data;
 		len = json_object_array_length(val);
 		for (i = 0; i < len; i++)
 			int_data[i] = json_object_get_int(json_object_array_get_idx(val, i));
