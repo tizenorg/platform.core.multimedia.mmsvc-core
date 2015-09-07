@@ -1,11 +1,11 @@
 [Unit]
-Description=Mused server
+Description=muse server
 
 [Service]
 Type=forking
-ExecStart=/usr/bin/mused-server
+ExecStart=/usr/bin/muse-server
 Restart=always
-MemoryLimit=100M
+MemoryLimit=300M
 EnvironmentFile=/run/tizen-system-env
 
 [Install]

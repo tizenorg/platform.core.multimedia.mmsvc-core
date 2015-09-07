@@ -61,7 +61,7 @@ extern "C" {
 
 #undef LOG_TAG
 #define LOG_TAG "TIZEN_N_MUSED"
-#define LOGFILE "/var/log/mused-server.log"
+#define LOGFILE "/var/log/muse-server.log"
 #define LOCKFILE "/tmp/.mmsvc-core.lock"
 #define SOCKFILE0 "/tmp/.mmsvc_core_socket"
 #define SOCKFILE1 "/tmp/.mmsvc_core_data_socket"
