@@ -5,8 +5,8 @@ Release:    0
 Group:      System/Libraries
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
-Source1:    mused-server.service
-Source2:    mused-server.socket
+Source1:    muse-server.service
+Source2:    muse-server.socket
 BuildRequires:  cmake
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(glib-2.0)
@@ -51,17 +51,17 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/license
 cp LICENSE.APLv2 %{buildroot}/usr/share/license/%{name}
 mkdir -p %{buildroot}/usr/bin
-cp mused-server %{buildroot}/usr/bin
+cp muse-server %{buildroot}/usr/bin
 
 %make_install
 
 mkdir -p %{buildroot}%{_unitdir}/multi-user.target.wants
-install -m 0644 %SOURCE1 %{buildroot}%{_unitdir}/mused-server.service
-%install_service multi-user.target.wants mused-server.service
+install -m 0644 %SOURCE1 %{buildroot}%{_unitdir}/muse-server.service
+%install_service multi-user.target.wants muse-server.service
 
 mkdir -p %{buildroot}%{_unitdir}/sockets.target.wants
-install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/mused-server.socket
-%install_service sockets.target.wants mused-server.socket
+install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/muse-server.socket
+%install_service sockets.target.wants muse-server.socket
 
 
 %post
@@ -74,10 +74,10 @@ install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/mused-server.socket
 %manifest mused.manifest
 %{_libdir}/libmused.so.*
 %{_datadir}/license/%{name}
-%{_unitdir}/mused-server.service
-%{_unitdir}/multi-user.target.wants/mused-server.service
-%{_unitdir}/mused-server.socket
-%{_unitdir}/sockets.target.wants/mused-server.socket
+%{_unitdir}/muse-server.service
+%{_unitdir}/multi-user.target.wants/muse-server.service
+%{_unitdir}/muse-server.socket
+%{_unitdir}/sockets.target.wants/muse-server.socket
 %{_datadir}/mused/mused.conf
 /usr/bin/*
 

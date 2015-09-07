@@ -387,7 +387,7 @@ int mmsvc_core_run()
 	}
 
 	/* Sigaction */
-	g_loop = g_main_loop_new(NULL, FALSE);
+	g_loop = g_main_loop_new(MULL, FALSE);
 
 	g_thread = g_thread_new("mmsvc_thread", mmsvc_core_main_loop, g_loop);
 
