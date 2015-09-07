@@ -375,6 +375,7 @@ MMServer *mmsvc_core_new()
 int mmsvc_core_run()
 {
 	int ret = -1;
+	GMainContext *context;
 
 	LOGD("Enter");
 
@@ -387,7 +388,9 @@ int mmsvc_core_run()
 	}
 
 	/* Sigaction */
-	g_loop = g_main_loop_new(NULL, FALSE);
+	context = g_main_context_new();
+	g_loop = g_main_loop_new(context, FALSE);
+	g_main_context_unref(context);
 
 	g_thread = g_thread_new("mmsvc_thread", mmsvc_core_main_loop, g_loop);
 
