@@ -48,11 +48,7 @@
 static mmsvc_core_log_t *g_mused_log = NULL;
 volatile unsigned int received_signal_flags = 0;
 
-static void _mmsvc_core_log_sig_child(int signo);
 static void _mmsvc_core_log_sig_abort(int signo);
-static void _mmsvc_core_log_sig_terminate(int signo);
-static void _mmsvc_core_log_sig_restart(int signo);
-static int _mmsvc_core_log_init_signal_set(void);
 static void _mmsvc_core_log_init_signals(void);
 static int _mmsvc_core_log_fd_set_block(int fd);
 static void _mmsvc_core_log_sigaction(int signo, siginfo_t *si, void *arg);
@@ -61,28 +57,22 @@ static void _mmsvc_core_log_init_instance(void (*log)(char *), void (*fatal)(cha
 	gboolean(*get_module_opened) (int), GModule * (*get_module_value) (int), void (*set_msg) (char *), char * (*get_msg) (void));
 static void _mmsvc_core_log_monitor(char *msg);
 static void _mmsvc_core_log_fatal(char *msg);
-static int _mmsvc_core_log_init_signal_set(void);
 static void _mmsvc_core_log_set_module_value(int index, GModule *module, gboolean value);
 static void _mmsvc_core_log_set_msg(char *msg);
 static char *_mmsvc_core_log_get_msg(void);
 static gboolean _mmsvc_core_log_get_module_opened(int index);
 static GModule *_mmsvc_core_log_get_module_value(int index);
 
-static void _mmsvc_core_log_sig_child(int signo)
-{
-	received_signal_flags |= RECEIVED_SIG_CHLD;
-
-	if (SIG_ERR == signal(SIGCHLD, _mmsvc_core_log_sig_child))
-		LOGE("SIGCHLD handler: %s", strerror(errno));
-}
-
 static void _mmsvc_core_log_sig_abort(int signo)
 {
 	received_signal_flags |= RECEIVED_SIG_ABORT;
 
-	if (SIG_ERR == signal(SIGABRT, SIG_DFL))
-		LOGE("SIGABRT andler: %s", strerror(errno));
+	LOGD("Enter");
 
+	if (SIG_ERR == signal(SIGABRT, SIG_DFL))
+		LOGE("SIGABRT handler: %s", strerror(errno));
+
+	LOGD("client name");
 	static char client_name[256];
 	memset(client_name, '\0', sizeof(client_name));
 	snprintf(client_name, sizeof(client_name) - 1, "[client name] %s", mmsvc_core_config_get_instance()->get_hosts());
@@ -111,87 +101,12 @@ static void _mmsvc_core_log_sig_abort(int signo)
 	mmsvc_core_workqueue_get_instance()->shutdown();
 
 	abort();
-}
-
-static void _mmsvc_core_log_sig_terminate(int signo)
-{
-	if (signo == SIGSEGV || signo == SIGXCPU || signo == SIGBUS) {
-		if (signo == SIGXCPU) {
-			received_signal_flags |= RECEIVED_SIG_XCPU;
-		} else {
-			received_signal_flags |= RECEIVED_SIG_SEGV;
-		}
-
-		LOGD("mused terminating (%d)", signo);
-
-	} else if (signo == SIGTERM) {
-		received_signal_flags |= RECEIVED_SIG_TERMINATE;
-
-	} else {
-		received_signal_flags |= RECEIVED_SIG_TERM_OTHER;
-	}
-
-	if (SIG_ERR == signal(signo, SIG_IGN))
-		LOGE("handler for %d: %s", signo, strerror(errno));
-}
-
-static void _mmsvc_core_log_sig_restart(int signo)
-{
-	received_signal_flags |= RECEIVED_SIG_RESTART;
-
-	if (SIG_ERR == signal(SIGHUP, _mmsvc_core_log_sig_restart))
-		LOGE("SIGHUP andler: %s", strerror(errno));
-}
-
-static void _mmsvc_core_log_signals_handle_event(int signo)
-{
-	received_signal_flags |= RECEIVED_SIG_EVENT;
-
-	if (SIG_ERR == signal(SIGUSR2, _mmsvc_core_log_signals_handle_event))
-		LOGE(" SIGUSR2 handler: %s", strerror(errno));
-}
-
-static int _mmsvc_core_log_init_signal_set(void)
-{
-	sigset_t mmsvc_core_log_sig_set;
-
-	sigemptyset(&mmsvc_core_log_sig_set);
-
-	sigaddset(&mmsvc_core_log_sig_set, SIGCHLD);
-	sigaddset(&mmsvc_core_log_sig_set, SIGINT);
-	sigaddset(&mmsvc_core_log_sig_set, SIGQUIT);
-	sigaddset(&mmsvc_core_log_sig_set, SIGILL);
-	sigaddset(&mmsvc_core_log_sig_set, SIGABRT);
-	sigaddset(&mmsvc_core_log_sig_set, SIGFPE);
-	sigaddset(&mmsvc_core_log_sig_set, SIGSEGV);
-	sigaddset(&mmsvc_core_log_sig_set, SIGALRM);
-	sigaddset(&mmsvc_core_log_sig_set, SIGTERM);
-	sigaddset(&mmsvc_core_log_sig_set, SIGHUP);
-	sigaddset(&mmsvc_core_log_sig_set, SIGUSR2);
-	sigaddset(&mmsvc_core_log_sig_set, SIGSTKFLT);
-	sigaddset(&mmsvc_core_log_sig_set, SIGIO);
-	sigaddset(&mmsvc_core_log_sig_set, SIGBUS);
-
-	if (SIG_ERR == signal(SIGCHLD, _mmsvc_core_log_sig_child) || SIG_ERR == signal(SIGHUP, _mmsvc_core_log_sig_restart)
-		|| SIG_ERR == signal(SIGINT, _mmsvc_core_log_sig_terminate) || SIG_ERR == signal(SIGQUIT, _mmsvc_core_log_sig_terminate)
-		|| SIG_ERR == signal(SIGILL, _mmsvc_core_log_sig_terminate) || SIG_ERR == signal(SIGFPE, _mmsvc_core_log_sig_terminate)
-		|| SIG_ERR == signal(SIGABRT, _mmsvc_core_log_sig_abort) || SIG_ERR == signal(SIGSEGV, _mmsvc_core_log_sig_terminate)
-		|| SIG_ERR == signal(SIGXCPU, _mmsvc_core_log_sig_terminate) || SIG_ERR == signal(SIGBUS, _mmsvc_core_log_sig_terminate)
-		|| SIG_ERR == signal(SIGALRM, SIG_IGN) || SIG_ERR == signal(SIGTERM, _mmsvc_core_log_sig_terminate)
-		|| SIG_ERR == signal(SIGURG, SIG_IGN) || SIG_ERR == signal(SIGSTKFLT, _mmsvc_core_log_sig_terminate)
-		|| SIG_ERR == signal(SIGIO, SIG_IGN) || SIG_ERR == signal(SIGUSR2, _mmsvc_core_log_signals_handle_event)
-		|| 0 > sigprocmask(SIG_UNBLOCK, &mmsvc_core_log_sig_set, NULL)) {
-			LOGE("signal : %s", strerror(errno));
-		}
-
-	return 0;
+	LOGD("Leave");
 }
 
 static void _mmsvc_core_log_init_signals(void)
 {
 	struct sigaction action;
-
-	_mmsvc_core_log_init_signal_set();
 
 	memset(&action, 0, sizeof(sigaction));
 	sigemptyset(&action.sa_mask);
@@ -199,6 +114,8 @@ static void _mmsvc_core_log_init_signals(void)
 	action.sa_flags = SA_RESTART | SA_SIGINFO;
 
 	sigaction(SIGSEGV, &action, NULL);
+	sigaction(SIGABRT, &action, NULL);
+	sigaction(SIGTERM, &action, NULL);
 	sigaction(SIGBUS, &action, NULL);
 	sigaction(SIGXCPU, &action, NULL);
 	sigaction(SIGUSR1, &action, NULL);
@@ -225,8 +142,6 @@ static void _mmsvc_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 
 	g_return_if_fail(si != NULL);
 	g_return_if_fail(arg != NULL);
-
-	_mmsvc_core_log_sig_terminate(signo);
 
 	LOGE("----------BEGIN MUSED DYING MESSAGE----------");
 
