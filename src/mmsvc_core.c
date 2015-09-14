@@ -470,8 +470,8 @@ int mmsvc_core_client_get_capi(Client client)
 
 void mmsvc_core_connection_close(int sock_fd)
 {
-	LOGD("Enter");
 	if (sock_fd > 0) {
+		LOGD("[%d] shutdown", sock_fd);
 		shutdown(sock_fd, SHUT_RDWR);
 		close(sock_fd);
 	}
@@ -482,8 +482,10 @@ void mmsvc_core_worker_exit(Client client)
 	LOGD("Enter");
 	g_return_if_fail(client);
 
-	mmsvc_core_connection_close(client->ch[MUSED_CHANNEL_MSG].fd);
-	mmsvc_core_connection_close(client->ch[MUSED_CHANNEL_DATA].fd);
+	if(client->ch[MUSED_CHANNEL_MSG].fd)
+		mmsvc_core_connection_close(client->ch[MUSED_CHANNEL_MSG].fd);
+	if(client->ch[MUSED_CHANNEL_DATA].fd)
+		mmsvc_core_connection_close(client->ch[MUSED_CHANNEL_DATA].fd);
 
 	g_return_if_fail(client->ch[MUSED_CHANNEL_MSG].p_gthread != NULL);
 	LOGD("%p thread exit\n", client->ch[MUSED_CHANNEL_MSG].p_gthread);

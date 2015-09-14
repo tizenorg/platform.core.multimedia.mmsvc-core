@@ -52,6 +52,7 @@ static void _mmsvc_core_ipc_client_cleanup(Client client)
 	client->ch[MUSED_CHANNEL_DATA].queue = NULL;
 	g_cond_broadcast(&client->ch[MUSED_CHANNEL_DATA].cond);
 	g_thread_join(client->ch[MUSED_CHANNEL_DATA].p_gthread);
+	g_thread_unref(client->ch[MUSED_CHANNEL_DATA].p_gthread);
 	g_mutex_clear(&client->ch[MUSED_CHANNEL_DATA].mutex);
 	g_cond_clear(&client->ch[MUSED_CHANNEL_DATA].cond);
 	LOGD("worker exit");
@@ -188,9 +189,8 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 				if (mmsvc_core_msg_json_deserialize_type("client_addr",
 							recvBuff, &client_addr, NULL, MUSED_TYPE_POINTER)) {
 					client = (Client) client_addr;
-					if (client) {
+					if (client)
 						client->ch[MUSED_CHANNEL_DATA].p_gthread = g_thread_self();
-					}
 				}
 				MMSVC_FREE(recvBuff);
 				recvBuff = NULL;

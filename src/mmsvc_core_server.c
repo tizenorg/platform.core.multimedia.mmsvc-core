@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 	/* create new session */
 	sid = setsid();
 	if (sid < 0) {
-		LOGE("sid SID : %d, PID CLOSE!!", pid);
+		LOGE("SID : %d, PID CLOSE!!", sid);
 		exit(0);
 	}
 
