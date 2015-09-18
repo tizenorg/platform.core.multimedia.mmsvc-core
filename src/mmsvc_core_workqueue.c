@@ -156,5 +156,5 @@ int mmsvc_core_workqueue_init(int numWorkers)
 
 	_mmsvc_core_workqueue_init_instance(_mmsvc_core_workqueue_shutdown, _mmsvc_core_workqueue_add_job);
 
-	return 0;
+	return MM_ERROR_NONE;
 }

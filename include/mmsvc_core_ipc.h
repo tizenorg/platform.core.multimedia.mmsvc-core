@@ -27,24 +27,20 @@ extern "C" {
 
 #include "mmsvc_core.h"
 #include "mmsvc_core_workqueue.h"
+#include <tbm_bufmgr.h>
 
 #define MUSED_DATA_HEAD 0xda1a6ead
+
+typedef struct mmsvc_core_ipc {
+	tbm_bufmgr bufmgr;
+	void (*deinit)(void);
+} mmsvc_core_ipc_t;
 
 typedef enum {
 	API_CREATE,
 	API_DESTROY,
 	API_MAX
 } api_type_e;
-
-gboolean mmsvc_core_ipc_job_function(struct mmsvc_core_workqueue_job * job);
-int mmsvc_core_ipc_send_msg(int sock_fd, const char *msg);
-int mmsvc_core_ipc_recv_msg(int sock_fd, char *msg);
-
-gboolean mmsvc_core_ipc_data_job_function(mmsvc_core_workqueue_job_t * job);
-int mmsvc_core_ipc_push_data(int sock_fd, const char *data, int size, int data_id);
-char *mmsvc_core_ipc_get_data(Client client);
-intptr_t mmsvc_core_ipc_get_handle(Client client);
-void mmsvc_core_ipc_delete_data(char *data);
 
 /**
  * @brief Create and send address of server side client infomation structure.
@@ -66,6 +62,19 @@ void mmsvc_core_ipc_delete_data(char *data);
 		} \
 	}while(0)
 
+gboolean mmsvc_core_ipc_job_function(struct mmsvc_core_workqueue_job * job);
+int mmsvc_core_ipc_send_msg(int sock_fd, const char *msg);
+int mmsvc_core_ipc_recv_msg(int sock_fd, char *msg);
+
+gboolean mmsvc_core_ipc_data_job_function(mmsvc_core_workqueue_job_t * job);
+int mmsvc_core_ipc_push_data(int sock_fd, const char *data, int size, int data_id);
+char *mmsvc_core_ipc_get_data(Client client);
+intptr_t mmsvc_core_ipc_get_handle(Client client);
+int mmsvc_core_ipc_set_handle(Client client, intptr_t handle);
+void mmsvc_core_ipc_delete_data(char *data);
+int mmsvc_core_ipc_get_bufmgr(tbm_bufmgr *bufmgr);
+mmsvc_core_ipc_t *mmsvc_core_ipc_get_instance(void);
+void mmsvc_core_ipc_init(void);
 
 #ifdef _cplusplus
 }

@@ -9,7 +9,7 @@ includedir=/usr/include/media
 Name: @PC_NAME@
 Description: @PACKAGE_DESCRIPTION@
 Version: @VERSION@
-Requires: @PC_REQUIRED@ mm-common iniparser
+Requires: @PC_REQUIRED@ mm-common iniparser capi-base-common
 Libs: -L${libdir} @PC_LDFLAGS@
 Cflags: -I${includedir}
 

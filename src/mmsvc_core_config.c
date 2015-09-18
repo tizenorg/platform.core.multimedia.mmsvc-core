@@ -126,7 +126,7 @@ static int _mmsvc_core_config_parser(void)
 		MMSVC_FREE(host_name);
 	}
 
-	return 0;
+	return MM_ERROR_NONE;
 }
 
 static void _mmsvc_core_config_free(void)
@@ -165,6 +165,7 @@ static void _mmsvc_core_config_init_instance(void (*free)(void), char* (*get_pat
 	g_return_if_fail(g_conf == NULL);
 
 	g_conf = calloc(1, sizeof(*g_conf));
+	g_return_if_fail(g_conf != NULL);
 	g_conf->hosts = NULL;
 	g_conf->type = 0;
 	g_conf->logfile = NULL;

@@ -22,6 +22,7 @@
 #include "mmsvc_core.h"
 #include "mmsvc_core_internal.h"
 #include "mmsvc_core_config.h"
+#include "mmsvc_core_ipc.h"
 #include "mmsvc_core_log.h"
 #include "mmsvc_core_tool.h"
 #include <gst/gst.h>
@@ -59,7 +60,6 @@ static void _mmsvc_core_server_gst_init(char **cmd)
 	memset(argv, 0, sizeof(gchar*) * (gst_param_cnt + 1));
 
 	argv[0] = g_strdup(cmd[0]);
-
 	for (*argc = 1; (*argc) <= gst_param_cnt; (*argc)++) {
 		argv[*argc] = g_strdup(mmsvc_core_config_get_instance()->get_gst_param_str((*argc) - 1));
 		LOGD("mmsvc_gst_param_str[%d] : %s", *argc, argv[*argc]);
@@ -90,6 +90,7 @@ int main(int argc, char **argv)
 	_mmsvc_core_server_setup_syslog();
 	mmsvc_core_config_init();
 	mmsvc_core_log_init();
+	mmsvc_core_ipc_init();
 	_mmsvc_core_server_gst_init(argv);
 
 	if (argc > 1 && argv)

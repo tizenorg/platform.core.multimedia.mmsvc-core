@@ -39,10 +39,15 @@ typedef struct {
 	/* Dynamic allocated data area */
 } RecvData_t;
 
+static mmsvc_core_ipc_t *g_mused_ipc;
+
 static void _mmsvc_core_ipc_client_cleanup(Client client);
 static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data);
 static gpointer _mmsvc_core_ipc_data_worker(gpointer data);
 static RecvData_t *_mmsvc_core_ipc_new_qdata(char **recvBuff, int recvSize, int *allocSize);
+static bool _mmsvc_core_ipc_init_bufmgr(void);
+static void _mmsvc_core_ipc_deinit_bufmgr(void);
+static void _mmsvc_core_ipc_init_instance(void (*deinit)(void));
 
 static void _mmsvc_core_ipc_client_cleanup(Client client)
 {
@@ -52,7 +57,6 @@ static void _mmsvc_core_ipc_client_cleanup(Client client)
 	client->ch[MUSED_CHANNEL_DATA].queue = NULL;
 	g_cond_broadcast(&client->ch[MUSED_CHANNEL_DATA].cond);
 	g_thread_join(client->ch[MUSED_CHANNEL_DATA].p_gthread);
-	g_thread_unref(client->ch[MUSED_CHANNEL_DATA].p_gthread);
 	g_mutex_clear(&client->ch[MUSED_CHANNEL_DATA].mutex);
 	g_cond_clear(&client->ch[MUSED_CHANNEL_DATA].cond);
 	LOGD("worker exit");
@@ -229,6 +233,56 @@ static RecvData_t *_mmsvc_core_ipc_new_qdata(char **recvBuff, int recvSize, int 
 	return qData;
 }
 
+static bool _mmsvc_core_ipc_init_bufmgr(void)
+{
+	LOGD("Enter");
+	g_return_if_fail(g_mused_ipc != NULL);
+
+	g_mused_ipc->bufmgr = tbm_bufmgr_init(-1);
+	if(g_mused_ipc->bufmgr == NULL) {
+		LOGE("Error - tbm_bufmgr_init");
+		return FALSE;
+	}
+
+	LOGD("Leave");
+	return TRUE;
+}
+
+static void _mmsvc_core_ipc_deinit_bufmgr(void)
+{
+	LOGD("Enter");
+	g_return_if_fail(g_mused_ipc->bufmgr);
+
+	tbm_bufmgr_deinit(g_mused_ipc->bufmgr);
+	LOGD("Leave");
+}
+
+static void _mmsvc_core_ipc_init_instance(void (*deinit)(void))
+{
+	g_return_if_fail(deinit != NULL);
+	g_return_if_fail(g_mused_ipc == NULL);
+
+	g_mused_ipc = calloc(1, sizeof(*g_mused_ipc));
+	g_return_if_fail(g_mused_ipc != NULL);
+	g_return_if_fail(_mmsvc_core_ipc_init_bufmgr() == TRUE);
+
+	g_mused_ipc->deinit = deinit;
+}
+
+int mmsvc_core_ipc_get_client_from_job(mmsvc_core_workqueue_job_t *job)
+{
+	LOGD("Enter");
+	Client client = NULL;
+
+	g_return_val_if_fail(job != NULL, MM_ERROR_INVALID_ARGUMENT);
+
+	client = (Client) job->user_data;
+	g_return_val_if_fail(client != NULL, MM_ERROR_INVALID_ARGUMENT);
+
+	LOGD("Leave");
+	return client->api_client;
+}
+
 gboolean mmsvc_core_ipc_job_function(mmsvc_core_workqueue_job_t *job)
 {
 	LOGD("Enter");
@@ -272,9 +326,9 @@ gboolean mmsvc_core_ipc_data_job_function(mmsvc_core_workqueue_job_t *job)
 
 int mmsvc_core_ipc_send_msg(int sock_fd, const char *msg)
 {
-	int ret = -1;
+	int ret = MM_ERROR_NONE;
 
-	g_return_val_if_fail(msg != NULL, ret);
+	g_return_val_if_fail(msg != NULL, MM_ERROR_INVALID_ARGUMENT);
 
 	if ((ret = send(sock_fd, msg, strlen(msg), 0)) < 0)
 		LOGE("send msg failed");
@@ -284,9 +338,9 @@ int mmsvc_core_ipc_send_msg(int sock_fd, const char *msg)
 
 int mmsvc_core_ipc_recv_msg(int sock_fd, char *msg)
 {
-	int ret = -1;
+	int ret = MM_ERROR_NONE;
 
-	g_return_val_if_fail(msg != NULL, ret);
+	g_return_val_if_fail(msg != NULL, MM_ERROR_INVALID_ARGUMENT);
 
 	if ((ret = recv(sock_fd, msg, MM_MSG_MAX_LENGTH, 0)) < 0)
 		LOGE("fail to receive msg (%s)", strerror(errno));
@@ -296,9 +350,10 @@ int mmsvc_core_ipc_recv_msg(int sock_fd, char *msg)
 
 int mmsvc_core_ipc_push_data(int sock_fd, const char *data, int size, int data_id)
 {
-	int ret = -1;
+	int ret = MM_ERROR_NONE;
+
 	RecvDataHead_t header;
-	g_return_val_if_fail(data != NULL, ret);
+	g_return_val_if_fail(data != NULL, MM_ERROR_INVALID_ARGUMENT);
 
 	header.marker = MUSED_DATA_HEAD;
 	header.id = data_id;
@@ -349,5 +404,44 @@ char *mmsvc_core_ipc_get_data(Client client)
 intptr_t mmsvc_core_ipc_get_handle(Client client)
 {
 	g_return_val_if_fail(client, NULL);
+	g_return_val_if_fail(client->handle, NULL);
 	return client->handle;
+}
+
+int mmsvc_core_ipc_set_handle(Client client, intptr_t handle)
+{
+	g_return_val_if_fail(client, MM_ERROR_INVALID_ARGUMENT);
+	g_return_val_if_fail(handle, MM_ERROR_INVALID_HANDLE);
+
+	client->handle = handle;
+	return MM_ERROR_NONE;
+}
+
+int mmsvc_core_ipc_get_bufmgr(tbm_bufmgr *bufmgr)
+{
+	LOGD("Enter");
+	g_return_val_if_fail(bufmgr, MM_ERROR_INVALID_ARGUMENT);
+	g_return_val_if_fail(g_mused_ipc->bufmgr, MM_ERROR_INVALID_ARGUMENT);
+
+	*bufmgr = g_mused_ipc->bufmgr;
+	LOGD("Leave");
+	return MM_ERROR_NONE;
+}
+
+mmsvc_core_ipc_t *mmsvc_core_ipc_get_instance(void)
+{
+	if (g_mused_ipc == NULL)
+		_mmsvc_core_ipc_init_instance(_mmsvc_core_ipc_deinit_bufmgr);
+
+	return g_mused_ipc;
+}
+
+void mmsvc_core_ipc_init(void)
+{
+	LOGD("Enter");
+
+	if (g_mused_ipc == NULL)
+		_mmsvc_core_ipc_init_instance(_mmsvc_core_ipc_deinit_bufmgr);
+
+	LOGD("Leave");
 }
