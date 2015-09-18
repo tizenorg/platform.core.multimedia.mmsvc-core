@@ -27,6 +27,7 @@ extern "C" {
 
 #include "mmsvc_core.h"
 #include "mmsvc_core_workqueue.h"
+#include "tbm_bufmgr.h"
 
 #define MUSED_DATA_HEAD 0xda1a6ead
 
@@ -44,7 +45,10 @@ gboolean mmsvc_core_ipc_data_job_function(mmsvc_core_workqueue_job_t * job);
 int mmsvc_core_ipc_push_data(int sock_fd, const char *data, int size, int data_id);
 char *mmsvc_core_ipc_get_data(Client client);
 intptr_t mmsvc_core_ipc_get_handle(Client client);
+int mmsvc_core_ipc_set_handle(Client client, intptr_t handle);
 void mmsvc_core_ipc_delete_data(char *data);
+int mmsvc_core_ipc_init_bufmgr(tbm_bufmgr *bufmgr);
+int mmsvc_core_ipc_deinit_bufmgr(tbm_bufmgr bufmgr);
 
 /**
  * @brief Create and send address of server side client infomation structure.

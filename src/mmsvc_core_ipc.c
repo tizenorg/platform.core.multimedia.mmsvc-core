@@ -52,7 +52,6 @@ static void _mmsvc_core_ipc_client_cleanup(Client client)
 	client->ch[MUSED_CHANNEL_DATA].queue = NULL;
 	g_cond_broadcast(&client->ch[MUSED_CHANNEL_DATA].cond);
 	g_thread_join(client->ch[MUSED_CHANNEL_DATA].p_gthread);
-	g_thread_unref(client->ch[MUSED_CHANNEL_DATA].p_gthread);
 	g_mutex_clear(&client->ch[MUSED_CHANNEL_DATA].mutex);
 	g_cond_clear(&client->ch[MUSED_CHANNEL_DATA].cond);
 	LOGD("worker exit");
@@ -88,8 +87,10 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 
 			while (client->msg_offset < len) {
 				if (mmsvc_core_msg_json_deserialize_len("api", client->recvMsg + client->msg_offset, &parse_len, &cmd, &err, MUSED_TYPE_INT)) {
+					#if 1
 					if (mmsvc_core_msg_json_deserialize_len("handle", client->recvMsg + client->msg_offset, &parse_len, &handle, &err, MUSED_TYPE_POINTER))
 						client->handle = handle;
+					#endif
 					switch (cmd) {
 					case API_CREATE:
 						if (mmsvc_core_msg_json_deserialize_len("client", client->recvMsg + client->msg_offset, &parse_len, &api_client, &err, MUSED_TYPE_INT)) {
@@ -229,6 +230,21 @@ static RecvData_t *_mmsvc_core_ipc_new_qdata(char **recvBuff, int recvSize, int 
 	return qData;
 }
 
+int mmsvc_core_ipc_get_client_from_job(mmsvc_core_workqueue_job_t *job)
+{
+	int err = -1;
+	LOGD("Enter");
+	Client client = NULL;
+
+	g_return_val_if_fail(job != NULL, err);
+
+	client = (Client) job->user_data;
+	g_return_val_if_fail(client != NULL, err);
+
+	LOGD("Leave");
+	return client->api_client;
+}
+
 gboolean mmsvc_core_ipc_job_function(mmsvc_core_workqueue_job_t *job)
 {
 	LOGD("Enter");
@@ -349,5 +365,45 @@ char *mmsvc_core_ipc_get_data(Client client)
 intptr_t mmsvc_core_ipc_get_handle(Client client)
 {
 	g_return_val_if_fail(client, NULL);
+	g_return_val_if_fail(client->handle, NULL);
 	return client->handle;
+}
+
+int mmsvc_core_ipc_set_handle(Client client, intptr_t handle)
+{
+	int err = -1;
+	g_return_val_if_fail(client, err);
+	g_return_val_if_fail(handle, err);
+
+	client->handle = handle;
+	return MM_ERROR_NONE;
+}
+
+int mmsvc_core_ipc_init_bufmgr(tbm_bufmgr *bufmgr)
+{
+	int drm_fd = -1;
+	tbm_bufmgr buf_mgr;
+
+	LOGD("tbm_bufmgr_init!");
+
+	buf_mgr = tbm_bufmgr_init(drm_fd);
+	if(buf_mgr == NULL) {
+		LOGE("Error - tbm_bufmgr_init");
+		return drm_fd;
+	}
+
+	*bufmgr = buf_mgr;
+	return MM_ERROR_NONE;
+}
+
+int mmsvc_core_ipc_deinit_bufmgr(tbm_bufmgr bufmgr)
+{
+	int err = -1;
+
+	LOGD("tbm_bufmgr_deinit");
+
+	g_return_val_if_fail(bufmgr, err);
+
+	tbm_bufmgr_deinit(bufmgr);
+	return MM_ERROR_NONE;
 }

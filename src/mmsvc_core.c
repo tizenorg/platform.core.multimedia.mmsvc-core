@@ -64,7 +64,7 @@ static int _mmsvc_core_set_nonblocking(int fd)
 		}
 	}
 
-	return 0;
+	return MM_ERROR_NONE;
 }
 
 static int _mmsvc_core_check_server_is_running(void)
@@ -85,7 +85,7 @@ static int _mmsvc_core_check_server_is_running(void)
 		close(fd);
 		if (already_running) {
 			LOGE("File already locked. There's already a server running");
-			return 0;
+			return MM_ERROR_NONE;
 		}
 	}
 

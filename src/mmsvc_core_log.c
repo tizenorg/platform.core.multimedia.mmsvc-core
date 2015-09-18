@@ -27,26 +27,16 @@
 #define __USE_GNU /* for gregs */
 #endif
 #include <ucontext.h>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
 
-/* Signals */
-#define RECEIVED_SIG_RESTART    0x0001
-#define RECEIVED_SIG_EXIT       0x0002
-#define RECEIVED_SIG_SHUTDOWN   0x0004
-#define RECEIVED_SIG_SEGV       0x0008
-#define RECEIVED_SIG_TERMINATE  0x0010
-#define RECEIVED_SIG_XCPU       0x0020
-#define RECEIVED_SIG_TERM_OTHER 0x0040
-#define RECEIVED_SIG_ABORT      0x0080
-#define RECEIVED_SIG_EVENT      0x0100
-#define RECEIVED_SIG_CHLD       0x0200
-#define RECEIVED_SIG_ALRM       0x0400
+#define _BUFFER_CACHE 1
 #define TUNABLE_CALLER_DEPTH 32
-#define MSG_LENGTH 1024 * 1024
 #define U32BITS 0xffffffff
-#define FILESYSTEMIO_MAX_DUPFDS 512
+#define READ_DEFAULT_BLOCK_SIZE 1024 * 1024
+#define WRITE_DEFAULT_BLOCK_SIZE 4096
 
 static mmsvc_core_log_t *g_mused_log = NULL;
-volatile unsigned int received_signal_flags = 0;
 
 static void _mmsvc_core_log_sig_abort(int signo);
 static void _mmsvc_core_log_init_signals(void);
@@ -65,8 +55,6 @@ static GModule *_mmsvc_core_log_get_module_value(int index);
 
 static void _mmsvc_core_log_sig_abort(int signo)
 {
-	received_signal_flags |= RECEIVED_SIG_ABORT;
-
 	if (SIG_ERR == signal(SIGABRT, SIG_DFL))
 		LOGE("SIGABRT handler: %s", strerror(errno));
 
@@ -217,6 +205,105 @@ static void _mmsvc_core_log_init_instance(void (*log)(char *), void (*fatal)(cha
 	}
 }
 
+#if _BUFFER_CACHE
+size_t
+_mmsvc_core_log_saferead(void *buf, size_t count)
+{
+	size_t nRead = 0;
+	while (count > 0) {
+		size_t rByte = read(g_mused_log->log_fd, buf, count);
+		if (rByte < 0 && errno == EINTR)
+			continue;
+		if (rByte < 0)
+			return rByte;
+		if (rByte == 0)
+			return nRead;
+		buf = (char *)buf + rByte;
+		count -= rByte;
+		nRead += rByte;
+	}
+	return nRead;
+}
+
+size_t
+_mmsvc_core_log_safewrite(const void *buf, size_t count)
+{
+	size_t nWritten = 0;
+	while (count > 0) {
+		size_t rByte = write(g_mused_log->log_fd, buf, count);
+
+		if (rByte < 0 && errno == EINTR)
+			continue;
+		if (rByte < 0)
+			return rByte;
+		if (rByte == 0)
+			return nWritten;
+		buf = (const char *)buf + rByte;
+		count -= rByte;
+		nWritten += rByte;
+	}
+	return nWritten;
+}
+
+static int
+_mmsvc_core_log_write_buffer_cache_to_fd(char *msg)
+{
+	int ret = MM_ERROR_NONE;
+	int wbytes = 0;
+	int amtread = -1;
+	int interval;
+	char *zero_buf = NULL;
+	char *_buf = NULL;
+	struct stat st;
+
+	if (ioctl(g_mused_log->log_fd, BLKBSZGET, &wbytes) < 0)
+		wbytes = 0;
+	if ((wbytes == 0) && fstat(g_mused_log->log_fd, &st) == 0)
+		wbytes = st.st_blksize;
+	if (wbytes < WRITE_DEFAULT_BLOCK_SIZE)
+		wbytes = WRITE_DEFAULT_BLOCK_SIZE;
+
+	if ((zero_buf = calloc(wbytes, 1)) == NULL) {
+		LOGE("Error - zero buf");
+		return -errno;
+	}
+
+	if ((_buf = calloc(wbytes, 1)) == NULL) {
+		LOGE("Error - buf");
+		return -errno;
+	}
+
+	while (amtread != 0) {
+		int amtleft = amtread;
+		if ((amtread = _mmsvc_core_log_saferead(_buf, READ_DEFAULT_BLOCK_SIZE)) < 0) {
+			LOGE("failed reading from file");
+			return -errno;
+		}
+
+		do {
+			interval = ((wbytes > amtleft) ? amtleft : wbytes);
+			int offset = amtread - amtleft;
+
+			if (memcmp(_buf+offset, zero_buf, interval) == 0) {
+				if (lseek(g_mused_log->log_fd, interval, SEEK_CUR) < 0) {
+					ret = -errno;
+					LOGE("cannot extend file %s");
+				}
+			} else if (_mmsvc_core_log_safewrite(_buf + offset, interval) < 0) {
+				LOGE("failed writing to file");
+				return -errno;
+			}
+		} while ((amtleft -= interval) > 0);
+
+		if (fdatasync(g_mused_log->log_fd) < 0) {
+			ret = -errno;
+			LOGE("cannot sync data to file");
+		}
+	}
+
+	return ret;
+}
+#endif
 static void _mmsvc_core_log_monitor(char *msg)
 {
 	g_return_if_fail(msg != NULL);
@@ -230,10 +317,18 @@ static void _mmsvc_core_log_monitor(char *msg)
 		return;
 	}
 
+	#if _BUFFER_CACHE
+	_mmsvc_core_log_write_buffer_cache_to_fd(msg);
+	if (_mmsvc_core_log_write_buffer_cache_to_fd(msg) != MM_ERROR_NONE)
+		LOGE("There was an error writing to testfile");
+	else if (write(g_mused_log->log_fd, "\n", 1) != 1)
+		LOGE("write %s", msg);
+	#else
 	if (write(g_mused_log->log_fd, msg, strlen(msg)) != strlen(msg))
 		LOGE("There was an error writing to testfile");
 	else if (write(g_mused_log->log_fd, "\n", 1) != 1)
 		LOGE("write %s", msg);
+	#endif
 
 	if (g_mused_log->count != 0)
 		g_timer_stop(g_mused_log->timer);

@@ -54,10 +54,10 @@ extern "C" {
 #include <sys/poll.h>
 #include <sys/un.h>
 #include <sys/file.h>
-#include <sys/stat.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include "mm_error.h"
 
 #undef LOG_TAG
 #define LOG_TAG "TIZEN_N_MUSED"

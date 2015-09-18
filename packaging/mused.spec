@@ -11,10 +11,12 @@ BuildRequires:  cmake
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(mm-common)
+BuildRequires:  pkgconfig(capi-base-common)
 BuildRequires:  pkgconfig(iniparser)
 BuildRequires:  pkgconfig(json-c)
 BuildRequires:  pkgconfig(gstreamer-1.0)
 BuildRequires:  pkgconfig(gstreamer-base-1.0)
+BuildRequires:  pkgconfig(libtbm)
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
@@ -28,6 +30,7 @@ Group:    Multimedia/Service
 Requires: %{name} = %{version}-%{release}
 Requires:  pkgconfig(mm-common)
 Requires:  pkgconfig(iniparser)
+Requires: pkgconfig(libtbm)
 %description devel
 
 %prep

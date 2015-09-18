@@ -25,8 +25,8 @@ SET(BINDIR "${PREFIX}/bin")
 SET(INC_DIR include)
 INCLUDE_DIRECTORIES(${INC_DIR})
 
-SET(dependents "dlog json-c glib-2.0 mm-common gmodule-2.0 iniparser gstreamer-1.0")
-SET(pc_dependents "dlog mm-common")
+SET(dependents "dlog mm-common json-c glib-2.0 capi-base-common gmodule-2.0 iniparser gstreamer-1.0 libtbm")
+SET(pc_dependents "dlog mm-common capi-base-common libtbm")
 
 INCLUDE(FindPkgConfig)
 pkg_check_modules(${fw_name} REQUIRED ${dependents})

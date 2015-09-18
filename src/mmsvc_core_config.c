@@ -126,7 +126,7 @@ static int _mmsvc_core_config_parser(void)
 		MMSVC_FREE(host_name);
 	}
 
-	return 0;
+	return MM_ERROR_NONE;
 }
 
 static void _mmsvc_core_config_free(void)
