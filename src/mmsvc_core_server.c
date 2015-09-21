@@ -60,10 +60,8 @@ static void _mmsvc_core_server_gst_init(char **cmd)
 	memset(argv, 0, sizeof(gchar*) * (gst_param_cnt + 1));
 
 	argv[0] = g_strdup(cmd[0]);
-	for (*argc = 1; (*argc) <= gst_param_cnt; (*argc)++) {
+	for (*argc = 1; (*argc) <= gst_param_cnt; (*argc)++)
 		argv[*argc] = g_strdup(mmsvc_core_config_get_instance()->get_gst_param_str((*argc) - 1));
-		LOGD("mmsvc_gst_param_str[%d] : %s", *argc, argv[*argc]);
-	}
 
 	/* initializing gstreamer */
 	ret = gst_init_check (argc, &argv, &err);

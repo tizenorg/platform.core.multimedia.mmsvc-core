@@ -29,7 +29,7 @@ extern "C" {
 #define MM_URI_MAX_LENGTH 4096
 #define MM_MSG_MAX_LENGTH 1024*1024
 
-typedef struct __Client * Client;
+typedef struct __Module * Module;
 
 typedef enum {
 	MUSED_DOMAIN_EVENT_SHUTDOWN = 0,
@@ -38,17 +38,17 @@ typedef enum {
 } mused_domain_event_e;
 
 int mmsvc_core_run(void);
-void mmsvc_core_cmd_dispatch(Client client, mused_domain_event_e ev);
+void mmsvc_core_cmd_dispatch(Module module, mused_domain_event_e ev);
 void mmsvc_core_connection_close(int sock_fd);
 int mmsvc_core_client_new(void);
 int mmsvc_core_client_new_data_ch(void);
-int mmsvc_core_client_get_msg_fd(Client client);
-int mmsvc_core_client_get_data_fd(Client client);
-void mmsvc_core_client_set_cust_data(Client client, void *data);
-void *mmsvc_core_client_get_cust_data(Client client);
-char *mmsvc_core_client_get_msg(Client client);
-int mmsvc_core_client_get_capi(Client client);
-void mmsvc_core_worker_exit(Client client);
+int mmsvc_core_client_get_msg_fd(Module module);
+int mmsvc_core_client_get_data_fd(Module module);
+void mmsvc_core_client_set_cust_data(Module module, void *data);
+void *mmsvc_core_client_get_cust_data(Module module);
+char *mmsvc_core_client_get_msg(Module module);
+int mmsvc_core_client_get_capi(Module module);
+void mmsvc_core_worker_exit(Module module);
 unsigned mmsvc_core_get_atomic_uint(void);
 
 #ifdef __cplusplus
