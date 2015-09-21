@@ -48,11 +48,11 @@ typedef enum {
  * @param[in] client The server side client infomation.
  * @param[in] fd socket fd
  */
-#define mmsvc_core_send_client_addr(client, fd) \
+#define mmsvc_core_send_client_addr(module, fd) \
 	do{	\
 		char *__sndMsg__; \
 		int __len__; \
-		__sndMsg__ = mmsvc_core_msg_json_factory_new(0, #client, client, \
+		__sndMsg__ = mmsvc_core_msg_json_factory_new(0, #module, module, \
 				0); \
 		__len__ = mmsvc_core_ipc_send_msg(fd, __sndMsg__); \
 		mmsvc_core_msg_json_factory_free(__sndMsg__); \
@@ -68,9 +68,9 @@ int mmsvc_core_ipc_recv_msg(int sock_fd, char *msg);
 
 gboolean mmsvc_core_ipc_data_job_function(mmsvc_core_workqueue_job_t * job);
 int mmsvc_core_ipc_push_data(int sock_fd, const char *data, int size, int data_id);
-char *mmsvc_core_ipc_get_data(Client client);
-intptr_t mmsvc_core_ipc_get_handle(Client client);
-int mmsvc_core_ipc_set_handle(Client client, intptr_t handle);
+char *mmsvc_core_ipc_get_data(Module module);
+intptr_t mmsvc_core_ipc_get_handle(Module module);
+int mmsvc_core_ipc_set_handle(Module module, intptr_t handle);
 void mmsvc_core_ipc_delete_data(char *data);
 int mmsvc_core_ipc_get_bufmgr(tbm_bufmgr *bufmgr);
 mmsvc_core_ipc_t *mmsvc_core_ipc_get_instance(void);

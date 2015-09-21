@@ -133,7 +133,7 @@ static void _mmsvc_core_msg_json_factory_args(json_object *jobj, va_list ap)
 	}
 }
 
-char *mmsvc_core_msg_json_factory_new(int api, const char *arg_name, int64_t arg, ...)
+char *mmsvc_core_msg_json_factory_new(int api, ...)
 {
 	json_object *jobj;
 	const char *jsonMsg;
@@ -144,13 +144,7 @@ char *mmsvc_core_msg_json_factory_new(int api, const char *arg_name, int64_t arg
 
 	g_return_val_if_fail(jobj != NULL, NULL);
 
-	json_object_object_add(jobj, "api", json_object_new_int(api));
-	if (arg_name)
-		json_object_object_add(jobj, arg_name, json_object_new_int64(arg));
-	else
-		LOGE("Error - null arg_name");
-
-	va_start(ap, arg);
+	va_start(ap, api);
 	_mmsvc_core_msg_json_factory_args(jobj, ap);
 	va_end(ap);
 
