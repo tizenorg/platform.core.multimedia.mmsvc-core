@@ -51,14 +51,14 @@ typedef struct {
 	};
 } channel_info;
 
-typedef struct __Client{
+typedef struct __Module{
 	channel_info ch[MUSED_CHANNEL_MAX];
 	char recvMsg[MM_MSG_MAX_LENGTH];
 	int msg_offset;
-	int api_client;
-	gpointer cust_data;
+	int disp_api;
+	gpointer usr_data;
 	intptr_t handle;
-} _Client;
+} _Module;
 
 typedef struct {
 	int fd;
@@ -67,10 +67,10 @@ typedef struct {
 	int stop;
 	int retval;
 	gint running;
-} MMServer;
+} MUSED;
 
 gpointer mmsvc_core_main_loop(gpointer data);
-MMServer *mmsvc_core_new();
+MUSED *mmsvc_core_new();
 gboolean mmsvc_core_connection_handler(GIOChannel * source, GIOCondition condition, gpointer data);
 
 #ifdef __cplusplus

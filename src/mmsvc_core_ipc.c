@@ -41,7 +41,7 @@ typedef struct {
 
 static mmsvc_core_ipc_t *g_mused_ipc;
 
-static void _mmsvc_core_ipc_client_cleanup(Client client);
+static void _mmsvc_core_ipc_client_cleanup(Module module);
 static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data);
 static gpointer _mmsvc_core_ipc_data_worker(gpointer data);
 static RecvData_t *_mmsvc_core_ipc_new_qdata(char **recvBuff, int recvSize, int *allocSize);
@@ -49,73 +49,73 @@ static bool _mmsvc_core_ipc_init_bufmgr(void);
 static void _mmsvc_core_ipc_deinit_bufmgr(void);
 static void _mmsvc_core_ipc_init_instance(void (*deinit)(void));
 
-static void _mmsvc_core_ipc_client_cleanup(Client client)
+static void _mmsvc_core_ipc_client_cleanup(Module module)
 {
-	g_return_if_fail(client != NULL);
+	g_return_if_fail(module != NULL);
 
-	g_queue_free(client->ch[MUSED_CHANNEL_DATA].queue);
-	client->ch[MUSED_CHANNEL_DATA].queue = NULL;
-	g_cond_broadcast(&client->ch[MUSED_CHANNEL_DATA].cond);
-	g_thread_join(client->ch[MUSED_CHANNEL_DATA].p_gthread);
-	g_mutex_clear(&client->ch[MUSED_CHANNEL_DATA].mutex);
-	g_cond_clear(&client->ch[MUSED_CHANNEL_DATA].cond);
+	g_queue_free(module->ch[MUSED_CHANNEL_DATA].queue);
+	module->ch[MUSED_CHANNEL_DATA].queue = NULL;
+	g_cond_broadcast(&module->ch[MUSED_CHANNEL_DATA].cond);
+	g_thread_join(module->ch[MUSED_CHANNEL_DATA].p_gthread);
+	g_mutex_clear(&module->ch[MUSED_CHANNEL_DATA].mutex);
+	g_cond_clear(&module->ch[MUSED_CHANNEL_DATA].cond);
 	LOGD("worker exit");
-	mmsvc_core_worker_exit(client);
+	mmsvc_core_worker_exit(module);
 }
 
 static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 {
-	int len, parse_len, cmd, api_client;
-	Client client = NULL;
+	int len, parse_len, cmd, disp_api;
+	Module module = NULL;
 	intptr_t handle = 0;
 	mused_msg_parse_err_e err = MUSED_MSG_PARSE_ERROR_NONE;
 	g_return_val_if_fail(data != NULL, NULL);
 
-	client = (Client)data;
-	g_return_val_if_fail(client != NULL, NULL);
+	module = (Module)data;
+	g_return_val_if_fail(module != NULL, NULL);
 
 	while (1) {
-		memset(client->recvMsg, 0x00, sizeof(client->recvMsg));
-		len = mmsvc_core_ipc_recv_msg(client->ch[MUSED_CHANNEL_MSG].fd, client->recvMsg);
+		memset(module->recvMsg, 0x00, sizeof(module->recvMsg));
+		len = mmsvc_core_ipc_recv_msg(module->ch[MUSED_CHANNEL_MSG].fd, module->recvMsg);
 		if (len <= 0) {
 			LOGE("recv : %s (%d)", strerror(errno), errno);
-			mmsvc_core_cmd_dispatch(client, MUSED_DOMAIN_EVENT_SHUTDOWN);
-			_mmsvc_core_ipc_client_cleanup(client);
+			mmsvc_core_cmd_dispatch(module, MUSED_DOMAIN_EVENT_SHUTDOWN);
+			_mmsvc_core_ipc_client_cleanup(module);
 		} else {
 			parse_len = len;
 			LOGD("Message In");
 			cmd = 0;
-			api_client = 0;
-			client->msg_offset = 0;
+			disp_api = 0;
+			module->msg_offset = 0;
 
-			mmsvc_core_log_get_instance()->log(client->recvMsg);
+			mmsvc_core_log_get_instance()->log(module->recvMsg);
 
-			while (client->msg_offset < len) {
-				if (mmsvc_core_msg_json_deserialize_len("api", client->recvMsg + client->msg_offset, &parse_len, &cmd, &err, MUSED_TYPE_INT)) {
-					if (mmsvc_core_msg_json_deserialize_len("handle", client->recvMsg + client->msg_offset, &parse_len, &handle, &err, MUSED_TYPE_POINTER))
-						client->handle = handle;
+			while (module->msg_offset < len) {
+				if (mmsvc_core_msg_json_deserialize_len("api", module->recvMsg + module->msg_offset, &parse_len, &cmd, &err, MUSED_TYPE_INT)) {
+					if (mmsvc_core_msg_json_deserialize_len("handle", module->recvMsg + module->msg_offset, &parse_len, &handle, &err, MUSED_TYPE_POINTER))
+						module->handle = handle;
 					switch (cmd) {
 					case API_CREATE:
-						if (mmsvc_core_msg_json_deserialize_len("client", client->recvMsg + client->msg_offset, &parse_len, &api_client, &err, MUSED_TYPE_INT)) {
-							client->api_client = api_client;
-							client->ch[MUSED_CHANNEL_MSG].module = mmsvc_core_module_load(api_client);
-							client->ch[MUSED_CHANNEL_DATA].queue = g_queue_new();
-							g_mutex_init(&client->ch[MUSED_CHANNEL_DATA].mutex);
-							g_cond_init(&client->ch[MUSED_CHANNEL_DATA].cond);
+						if (mmsvc_core_msg_json_deserialize_len("client", module->recvMsg + module->msg_offset, &parse_len, &disp_api, &err, MUSED_TYPE_INT)) {
+							module->disp_api = disp_api;
+							module->ch[MUSED_CHANNEL_MSG].module = mmsvc_core_module_load(disp_api);
+							module->ch[MUSED_CHANNEL_DATA].queue = g_queue_new();
+							g_mutex_init(&module->ch[MUSED_CHANNEL_DATA].mutex);
+							g_cond_init(&module->ch[MUSED_CHANNEL_DATA].cond);
 							LOGD("client fd: %d module: %p",
-									client->ch[MUSED_CHANNEL_MSG].fd,
-									client->ch[MUSED_CHANNEL_MSG].module);
-							mmsvc_core_module_dll_symbol_dispatch(cmd, client);
+									module->ch[MUSED_CHANNEL_MSG].fd,
+									module->ch[MUSED_CHANNEL_MSG].module);
+							mmsvc_core_module_dll_symbol_dispatch(cmd, module);
 							break;
 						}
 					case API_DESTROY:
 						LOGD("DESTROY");
-						mmsvc_core_module_dll_symbol_dispatch(cmd, client);
-						_mmsvc_core_ipc_client_cleanup(client);
+						mmsvc_core_module_dll_symbol_dispatch(cmd, module);
+						_mmsvc_core_ipc_client_cleanup(module);
 						break;
 					default:
-						LOGD("[default] client->module: %p", client->ch[MUSED_CHANNEL_MSG].module);
-						mmsvc_core_module_dll_symbol_dispatch(cmd, client);
+						LOGD("[default] client->module: %p", module->ch[MUSED_CHANNEL_MSG].module);
+						mmsvc_core_module_dll_symbol_dispatch(cmd, module);
 						break;
 					}
 				} else {
@@ -126,7 +126,7 @@ static gpointer _mmsvc_core_ipc_dispatch_worker(gpointer data)
 				if (parse_len == 0)
 					break;
 
-				client->msg_offset += parse_len;
+				module->msg_offset += parse_len;
 				parse_len = len - parse_len;
 			}
 		}
@@ -141,7 +141,7 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 	int recvLen = 0;
 	int currLen = 0;
 	intptr_t fd = (intptr_t) data;
-	Client client = NULL;
+	Module module = NULL;
 	char *recvBuff = NULL;
 	int allocSize = 0;
 
@@ -164,7 +164,7 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 			LOGE("recv : %s (%d)", strerror(errno), errno);
 			break;
 		} else {
-			if (client) {
+			if (module) {
 				RecvData_t *qData;
 				while ((qData = _mmsvc_core_ipc_new_qdata(&recvBuff, currLen, &allocSize))
 						!= NULL) {
@@ -175,8 +175,8 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 						memcpy(newBuff, recvBuff + qDataSize, currLen - qDataSize);
 						recvBuff = newBuff;
 					}
-					g_queue_push_tail(client->ch[MUSED_CHANNEL_DATA].queue, qData);
-					g_cond_signal(&client->ch[MUSED_CHANNEL_DATA].cond);
+					g_queue_push_tail(module->ch[MUSED_CHANNEL_DATA].queue, qData);
+					g_cond_signal(&module->ch[MUSED_CHANNEL_DATA].cond);
 
 					currLen = currLen - qDataSize;
 					if (!currLen)
@@ -192,9 +192,9 @@ static gpointer _mmsvc_core_ipc_data_worker(gpointer data)
 				intptr_t client_addr = 0;
 				if (mmsvc_core_msg_json_deserialize_type("client_addr",
 							recvBuff, &client_addr, NULL, MUSED_TYPE_POINTER)) {
-					client = (Client) client_addr;
-					if (client)
-						client->ch[MUSED_CHANNEL_DATA].p_gthread = g_thread_self();
+					module = (Module) client_addr;
+					if (module)
+						module->ch[MUSED_CHANNEL_DATA].p_gthread = g_thread_self();
 				}
 				MMSVC_FREE(recvBuff);
 				recvBuff = NULL;
@@ -272,31 +272,31 @@ static void _mmsvc_core_ipc_init_instance(void (*deinit)(void))
 int mmsvc_core_ipc_get_client_from_job(mmsvc_core_workqueue_job_t *job)
 {
 	LOGD("Enter");
-	Client client = NULL;
+	Module module = NULL;
 
 	g_return_val_if_fail(job != NULL, MM_ERROR_INVALID_ARGUMENT);
 
-	client = (Client) job->user_data;
-	g_return_val_if_fail(client != NULL, MM_ERROR_INVALID_ARGUMENT);
+	module = (Module) job->user_data;
+	g_return_val_if_fail(module != NULL, MM_ERROR_INVALID_ARGUMENT);
 
 	LOGD("Leave");
-	return client->api_client;
+	return module->disp_api;
 }
 
 gboolean mmsvc_core_ipc_job_function(mmsvc_core_workqueue_job_t *job)
 {
 	LOGD("Enter");
-	Client client = NULL;
+	Module module = NULL;
 
 	g_return_val_if_fail(job != NULL, FALSE);
 
-	client = (Client) job->user_data;
-	g_return_val_if_fail(client != NULL, FALSE);
+	module = (Module) job->user_data;
+	g_return_val_if_fail(module != NULL, FALSE);
 
-	LOGD("[%p] client->fd : %d", client, client->ch[MUSED_CHANNEL_MSG].fd);
+	LOGD("[%p] client->fd : %d", module, module->ch[MUSED_CHANNEL_MSG].fd);
 
-	client->ch[MUSED_CHANNEL_MSG].p_gthread = g_thread_new(NULL, _mmsvc_core_ipc_dispatch_worker, (gpointer)client);
-	g_return_val_if_fail(client->ch[MUSED_CHANNEL_MSG].p_gthread != NULL, FALSE);
+	module->ch[MUSED_CHANNEL_MSG].p_gthread = g_thread_new(NULL, _mmsvc_core_ipc_dispatch_worker, (gpointer)module);
+	g_return_val_if_fail(module->ch[MUSED_CHANNEL_MSG].p_gthread != NULL, FALSE);
 
 	MMSVC_FREE(job);
 
@@ -377,14 +377,14 @@ void mmsvc_core_ipc_delete_data(char *data)
 		MMSVC_FREE(qData);
 }
 
-char *mmsvc_core_ipc_get_data(Client client)
+char *mmsvc_core_ipc_get_data(Module module)
 {
 	RecvData_t *qData;
 	char *rawData;
 	channel_info *ch;
 	gint64 end_time = g_get_monotonic_time() + 100 * G_TIME_SPAN_MILLISECOND;
-	g_return_val_if_fail(client, NULL);
-	ch = &client->ch[MUSED_CHANNEL_DATA];
+	g_return_val_if_fail(module, NULL);
+	ch = &module->ch[MUSED_CHANNEL_DATA];
 	g_return_val_if_fail(ch->queue, NULL);
 
 	g_mutex_lock(&ch->mutex);
@@ -401,19 +401,19 @@ char *mmsvc_core_ipc_get_data(Client client)
 	return NULL;
 }
 
-intptr_t mmsvc_core_ipc_get_handle(Client client)
+intptr_t mmsvc_core_ipc_get_handle(Module module)
 {
-	g_return_val_if_fail(client, NULL);
-	g_return_val_if_fail(client->handle, NULL);
-	return client->handle;
+	g_return_val_if_fail(module, NULL);
+	g_return_val_if_fail(module->handle, NULL);
+	return module->handle;
 }
 
-int mmsvc_core_ipc_set_handle(Client client, intptr_t handle)
+int mmsvc_core_ipc_set_handle(Module module, intptr_t handle)
 {
-	g_return_val_if_fail(client, MM_ERROR_INVALID_ARGUMENT);
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
 	g_return_val_if_fail(handle, MM_ERROR_INVALID_HANDLE);
 
-	client->handle = handle;
+	module->handle = handle;
 	return MM_ERROR_NONE;
 }
 

@@ -32,7 +32,7 @@
 #define WORK_THREAD_NUM 8
 #define LOG_SLEEP_TIMER 10
 
-static MMServer *server;
+static MUSED *server;
 static GMainLoop *g_loop;
 static GThread *g_thread;
 static char *UDS_files[MUSED_CHANNEL_MAX] = {SOCKFILE0, SOCKFILE1};
@@ -45,10 +45,10 @@ static gboolean (*job_functions[MUSED_CHANNEL_MAX])
 
 static int _mmsvc_core_set_nonblocking(int fd);
 static int _mmsvc_core_check_server_is_running(void);
-static MMServer *_mmsvc_core_create_new_server_from_fd(int fd[], int type);
+static MUSED *_mmsvc_core_create_new_server_from_fd(int fd[], int type);
 static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
 		GIOCondition condition, gpointer data);
-static int _mmsvc_core_free(MMServer *server);
+static int _mmsvc_core_free(MUSED *server);
 
 static int _mmsvc_core_set_nonblocking(int fd)
 {
@@ -129,13 +129,13 @@ static bool _mmsvc_core_attach_server(int fd, MMSVC_CORE_ClientCallback callback
 	return true;
 }
 
-static MMServer *_mmsvc_core_create_new_server_from_fd(int fd[], int type)
+static MUSED *_mmsvc_core_create_new_server_from_fd(int fd[], int type)
 {
-	MMServer *server;
+	MUSED *server;
 	int i;
 
 	LOGD("Enter");
-	server = malloc(sizeof(MMServer));
+	server = malloc(sizeof(MUSED));
 	g_return_val_if_fail(server != NULL, NULL);
 
 	server->fd = fd[MUSED_CHANNEL_MSG];
@@ -160,7 +160,7 @@ static MMServer *_mmsvc_core_create_new_server_from_fd(int fd[], int type)
 	return server;
 }
 
-static int _mmsvc_core_free(MMServer *server)
+static int _mmsvc_core_free(MUSED *server)
 {
 	int retval = -1;
 	int i;
@@ -245,7 +245,7 @@ static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
 
 	LOGD("Enter");
 
-	Client client = NULL;
+	Module module = NULL;
 	mmsvc_core_workqueue_job_t *job = NULL;
 
 
@@ -261,13 +261,13 @@ static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
 	}
 
 	if (channel == MUSED_CHANNEL_MSG) {
-		if ((client = malloc(sizeof(_Client))) == NULL) {
+		if ((module = malloc(sizeof(_Module))) == NULL) {
 			LOGE("failed to allocated memory for client stat");
 			goto out;
 		}
 
-		memset(client, 0, sizeof(_Client));
-		client->ch[channel].fd = client_sockfd;
+		memset(module, 0, sizeof(_Module));
+		module->ch[channel].fd = client_sockfd;
 	}
 
 	if ((job = malloc(sizeof(mmsvc_core_workqueue_job_t))) == NULL) {
@@ -277,7 +277,7 @@ static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
 
 	job->job_function = job_functions[channel];
 	if (channel == MUSED_CHANNEL_MSG)
-		job->user_data = client;
+		job->user_data = module;
 	else
 		job->user_data = (void *)(intptr_t)client_sockfd;
 
@@ -289,7 +289,7 @@ out:
 	if (client_sockfd)
 		close(client_sockfd);
 
-	MMSVC_FREE(client);
+	MMSVC_FREE(module);
 	MMSVC_FREE(job);
 
 	LOGE("FALSE");
@@ -348,7 +348,7 @@ gpointer mmsvc_core_main_loop(gpointer data)
 	return NULL;
 }
 
-MMServer *mmsvc_core_new()
+MUSED *mmsvc_core_new()
 {
 	int fd[MUSED_CHANNEL_MAX];
 	int i;
@@ -405,17 +405,17 @@ int mmsvc_core_run()
 	return _mmsvc_core_free(server);
 }
 
-void mmsvc_core_cmd_dispatch(Client client, mused_domain_event_e ev)
+void mmsvc_core_cmd_dispatch(Module module, mused_domain_event_e ev)
 {
 	MMSVC_MODULE_CMD_DispatchFunc *cmd_dispatcher = NULL;
 
-	g_return_if_fail(client->ch[MUSED_CHANNEL_MSG].module != NULL);
+	g_return_if_fail(module->ch[MUSED_CHANNEL_MSG].module != NULL);
 
-	g_module_symbol(client->ch[MUSED_CHANNEL_MSG].module, CMD_DISPATCHER, (gpointer *)&cmd_dispatcher);
+	g_module_symbol(module->ch[MUSED_CHANNEL_MSG].module, CMD_DISPATCHER, (gpointer *)&cmd_dispatcher);
 
 	if (cmd_dispatcher && cmd_dispatcher[ev]) {
 		LOGD("cmd_dispatcher: %p", cmd_dispatcher);
-		cmd_dispatcher[ev](client);
+		cmd_dispatcher[ev](module);
 	} else {
 		LOGE("error - cmd_dispatcher");
 		return;
@@ -432,41 +432,41 @@ int mmsvc_core_client_new_data_ch(void)
 	return _mmsvc_core_client_new(MUSED_CHANNEL_DATA);
 }
 
-int mmsvc_core_client_get_msg_fd(Client client)
+int mmsvc_core_client_get_msg_fd(Module module)
 {
-	g_return_val_if_fail(client, -1);
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
 
-	return client->ch[MUSED_CHANNEL_MSG].fd;
+	return module->ch[MUSED_CHANNEL_MSG].fd;
 }
 
-int mmsvc_core_client_get_data_fd(Client client)
+int mmsvc_core_client_get_data_fd(Module module)
 {
-	g_return_val_if_fail(client, -1);
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
 
-	return client->ch[MUSED_CHANNEL_DATA].fd;
+	return module->ch[MUSED_CHANNEL_DATA].fd;
 }
-void mmsvc_core_client_set_cust_data(Client client, void *data)
+void mmsvc_core_client_set_cust_data(Module module, void *data)
 {
-	g_return_if_fail(client);
-	client->cust_data = data;
-}
-
-void *mmsvc_core_client_get_cust_data(Client client)
-{
-	g_return_val_if_fail(client, NULL);
-	return client->cust_data;
+	g_return_if_fail(module);
+	module->usr_data= data;
 }
 
-char *mmsvc_core_client_get_msg(Client client)
+void *mmsvc_core_client_get_cust_data(Module module)
 {
-	g_return_val_if_fail(client, NULL);
-	return (client->recvMsg + client->msg_offset);
+	g_return_val_if_fail(module, NULL);
+	return module->usr_data;
 }
 
-int mmsvc_core_client_get_capi(Client client)
+char *mmsvc_core_client_get_msg(Module module)
 {
-	g_return_val_if_fail(client, -1);
-	return client->api_client;
+	g_return_val_if_fail(module, NULL);
+	return (module->recvMsg + module->msg_offset);
+}
+
+int mmsvc_core_client_get_capi(Module module)
+{
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
+	return module->disp_api;
 }
 
 void mmsvc_core_connection_close(int sock_fd)
@@ -478,21 +478,21 @@ void mmsvc_core_connection_close(int sock_fd)
 	}
 }
 
-void mmsvc_core_worker_exit(Client client)
+void mmsvc_core_worker_exit(Module module)
 {
 	LOGD("Enter");
-	g_return_if_fail(client);
+	g_return_if_fail(module);
 
-	mmsvc_core_connection_close(client->ch[MUSED_CHANNEL_MSG].fd);
-	mmsvc_core_connection_close(client->ch[MUSED_CHANNEL_DATA].fd);
+	mmsvc_core_connection_close(module->ch[MUSED_CHANNEL_MSG].fd);
+	mmsvc_core_connection_close(module->ch[MUSED_CHANNEL_DATA].fd);
 
-	g_return_if_fail(client->ch[MUSED_CHANNEL_MSG].p_gthread != NULL);
-	LOGD("%p thread exit\n", client->ch[MUSED_CHANNEL_MSG].p_gthread);
-	g_thread_unref(client->ch[MUSED_CHANNEL_MSG].p_gthread);
+	g_return_if_fail(module->ch[MUSED_CHANNEL_MSG].p_gthread != NULL);
+	LOGD("%p thread exit\n", module->ch[MUSED_CHANNEL_MSG].p_gthread);
+	g_thread_unref(module->ch[MUSED_CHANNEL_MSG].p_gthread);
 
-	if (client->ch[MUSED_CHANNEL_DATA].p_gthread)
-		g_thread_unref(client->ch[MUSED_CHANNEL_DATA].p_gthread);
-	MMSVC_FREE(client);
+	if (module->ch[MUSED_CHANNEL_DATA].p_gthread)
+		g_thread_unref(module->ch[MUSED_CHANNEL_DATA].p_gthread);
+	MMSVC_FREE(module);
 
 	LOGD("Leave");
 	g_thread_exit(NULL);
