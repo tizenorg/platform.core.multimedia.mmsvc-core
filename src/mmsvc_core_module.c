@@ -25,55 +25,55 @@
 #include "mmsvc_core_module.h"
 #include "mmsvc_core_private.h"
 
-GModule *mmsvc_core_module_load(int api_client)
+GModule *mmsvc_core_module_load(int disp_api)
 {
 	GModule *module = NULL;
 
-	if (mmsvc_core_log_get_instance()->get_module_opened(api_client) == false) {
-		LOGD("api client : %d", api_client);
-		module = g_module_open(mmsvc_core_config_get_instance()->get_path(api_client), G_MODULE_BIND_LAZY);
+	if (mmsvc_core_log_get_instance()->get_module_opened(disp_api) == false) {
+		LOGD("dispatch api: %d", disp_api);
+		module = g_module_open(mmsvc_core_config_get_instance()->get_path(disp_api), G_MODULE_BIND_LAZY);
 
 		if (!module) {
 			LOGE("%s", g_module_error());
 			return NULL;
 		} else {
-			mmsvc_core_log_get_instance()->set_module_value(api_client, module, true);
+			mmsvc_core_log_get_instance()->set_module_value(disp_api, module, true);
 		}
-	} else if (mmsvc_core_log_get_instance()->get_module_opened(api_client) == true) {
-		module = mmsvc_core_log_get_instance()->get_module_value(api_client);
+	} else if (mmsvc_core_log_get_instance()->get_module_opened(disp_api) == true) {
+		module = mmsvc_core_log_get_instance()->get_module_value(disp_api);
 		LOGW("already module is opened: %p", module);
 	}
 
 	return module;
 }
 
-void mmsvc_core_module_dll_symbol_dispatch(int cmd, Client client)
+void mmsvc_core_module_dll_symbol_dispatch(int cmd, Module module)
 {
 	MMSVC_MODULE_DispatchFunc *dispatcher = NULL;
 
-	g_return_if_fail(client->ch[MUSED_CHANNEL_MSG].module != NULL);
+	g_return_if_fail(module->ch[MUSED_CHANNEL_MSG].dll_handle != NULL);
 
-	LOGD("cmd: %d\t client->module: %p", cmd, client->ch[MUSED_CHANNEL_MSG].module);
-	g_module_symbol(client->ch[MUSED_CHANNEL_MSG].module, DISPATCHER, (gpointer *)&dispatcher);
+	LOGD("cmd: %d\t module->dll_handle: %p", cmd, module->ch[MUSED_CHANNEL_MSG].dll_handle);
+	g_module_symbol(module->ch[MUSED_CHANNEL_MSG].dll_handle, DISPATCHER, (gpointer *)&dispatcher);
 
 	if (dispatcher && dispatcher[cmd]) {
 		LOGD("dispatcher: %p", dispatcher);
-		dispatcher[cmd](client);
+		dispatcher[cmd](module);
 	} else {
 		LOGE("error - dispatcher");
 		return;
 	}
 }
 
-gboolean mmsvc_core_module_close(Client client)
+gboolean mmsvc_core_module_close(Module module)
 {
-	g_return_val_if_fail(client != NULL, FALSE);
+	g_return_val_if_fail(module != NULL, FALSE);
 
-	mmsvc_core_log_get_instance()->set_module_value(client->api_client, client->ch[MUSED_CHANNEL_MSG].module, false);
+	mmsvc_core_log_get_instance()->set_module_value(module->disp_api, module->ch[MUSED_CHANNEL_MSG].dll_handle, false);
 
-	LOGD("Closing module %s", g_module_name(client->ch[MUSED_CHANNEL_MSG].module));
-	if (!g_module_close(client->ch[MUSED_CHANNEL_MSG].module)) {
-		LOGE("Couldn't close module %s: %s", g_module_name(client->ch[MUSED_CHANNEL_MSG].module), g_module_error());
+	LOGD("Closing module %s", g_module_name(module->ch[MUSED_CHANNEL_MSG].dll_handle));
+	if (!g_module_close(module->ch[MUSED_CHANNEL_MSG].dll_handle)) {
+		LOGE("Couldn't close dll_handle %s: %s", g_module_name(module->ch[MUSED_CHANNEL_MSG].dll_handle), g_module_error());
 		return FALSE;
 	}
 
