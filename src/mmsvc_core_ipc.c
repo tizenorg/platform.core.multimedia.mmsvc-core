@@ -243,6 +243,7 @@ static bool _mmsvc_core_ipc_init_bufmgr(void)
 		LOGE("Error - tbm_bufmgr_init");
 		return FALSE;
 	}
+	LOGD("bufmgr: 0x%x", g_mused_ipc->bufmgr);
 
 	LOGD("Leave");
 	return TRUE;
@@ -423,6 +424,7 @@ int mmsvc_core_ipc_get_bufmgr(tbm_bufmgr *bufmgr)
 	g_return_val_if_fail(bufmgr, MM_ERROR_INVALID_ARGUMENT);
 	g_return_val_if_fail(g_mused_ipc->bufmgr, MM_ERROR_INVALID_ARGUMENT);
 
+	LOGD("bufmgr: 0x%x", g_mused_ipc->bufmgr);
 	*bufmgr = g_mused_ipc->bufmgr;
 	LOGD("Leave");
 	return MM_ERROR_NONE;

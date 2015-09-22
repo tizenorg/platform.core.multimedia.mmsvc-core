@@ -31,7 +31,6 @@
 #include <sys/ioctl.h>
 #include <linux/fs.h>
 
-#define _BUFFER_CACHE 0
 #define TUNABLE_CALLER_DEPTH 32
 #define U32BITS 0xffffffff
 #define READ_DEFAULT_BLOCK_SIZE 1024 * 1024
@@ -206,28 +205,7 @@ static void _mmsvc_core_log_init_instance(void (*log)(char *), void (*fatal)(cha
 	}
 }
 
-#if _BUFFER_CACHE
-size_t
-_mmsvc_core_log_saferead(void *buf, size_t count)
-{
-	size_t nRead = 0;
-	while (count > 0) {
-		size_t rByte = read(g_mused_log->log_fd, buf, count);
-		if (rByte < 0 && errno == EINTR)
-			continue;
-		if (rByte < 0)
-			return rByte;
-		if (rByte == 0)
-			return nRead;
-		buf = (char *)buf + rByte;
-		count -= rByte;
-		nRead += rByte;
-	}
-	return nRead;
-}
-
-size_t
-_mmsvc_core_log_safewrite(const void *buf, size_t count)
+static size_t _mmsvc_core_log_safewrite(const void *buf, size_t count)
 {
 	size_t nWritten = 0;
 	while (count > 0) {
@@ -246,65 +224,51 @@ _mmsvc_core_log_safewrite(const void *buf, size_t count)
 	return nWritten;
 }
 
-static int
-_mmsvc_core_log_write_buffer_cache_to_fd(char *msg)
+static int _mmsvc_core_log_write_buffer_cache_to_fd(char *msg)
 {
 	int ret = MM_ERROR_NONE;
-	int wbytes = 0;
-	int amtread = -1;
-	int interval;
-	char *zero_buf = NULL;
-	char *_buf = NULL;
+	int written = 0;
+	off_t remaining = 0;
+	size_t write_size = 0;
+	size_t bytes_wiped = 0;
+	size_t writebuf_length = 0;
 	struct stat st;
 
-	if (ioctl(g_mused_log->log_fd, BLKBSZGET, &wbytes) < 0)
-		wbytes = 0;
-	if ((wbytes == 0) && fstat(g_mused_log->log_fd, &st) == 0)
-		wbytes = st.st_blksize;
-	if (wbytes < WRITE_DEFAULT_BLOCK_SIZE)
-		wbytes = WRITE_DEFAULT_BLOCK_SIZE;
+	if (ioctl(g_mused_log->log_fd, BLKBSZGET, &writebuf_length) < 0)
+		writebuf_length = 0;
 
-	if ((zero_buf = calloc(wbytes, 1)) == NULL) {
-		LOGE("Error - zero buf");
-		return -errno;
+	if ((writebuf_length == 0) && fstat(g_mused_log->log_fd, &st) == 0)
+		writebuf_length = st.st_blksize;
+
+	if (writebuf_length < WRITE_DEFAULT_BLOCK_SIZE)
+		writebuf_length = WRITE_DEFAULT_BLOCK_SIZE;
+
+	if ((ret = lseek(g_mused_log->log_fd, writebuf_length, SEEK_SET)) < 0) {
+		LOGE("Failed to seek to position");
+		return ret;
 	}
 
-	if ((_buf = calloc(wbytes, 1)) == NULL) {
-		LOGE("Error - buf");
-		return -errno;
-	}
-
-	while (amtread != 0) {
-		int amtleft = amtread;
-		if ((amtread = _mmsvc_core_log_saferead(_buf, READ_DEFAULT_BLOCK_SIZE)) < 0) {
-			LOGE("failed reading from file");
-			return -errno;
+	remaining = WRITE_DEFAULT_BLOCK_SIZE;
+	while (remaining > 0) {
+		write_size = (writebuf_length < remaining) ? writebuf_length : remaining;
+		written = _mmsvc_core_log_safewrite(msg, write_size);
+		if (written < 0) {
+			LOGE("Failed to write %zu bytes to storage volume with path", write_size);
+			return ret;
 		}
-
-		do {
-			interval = ((wbytes > amtleft) ? amtleft : wbytes);
-			int offset = amtread - amtleft;
-
-			if (memcmp(_buf+offset, zero_buf, interval) == 0) {
-				if (lseek(g_mused_log->log_fd, interval, SEEK_CUR) < 0) {
-					ret = -errno;
-					LOGE("cannot extend file %s");
-				}
-			} else if (_mmsvc_core_log_safewrite(_buf + offset, interval) < 0) {
-				LOGE("failed writing to file");
-				return -errno;
-			}
-		} while ((amtleft -= interval) > 0);
-
-		if (fdatasync(g_mused_log->log_fd) < 0) {
-			ret = -errno;
-			LOGE("cannot sync data to file");
-		}
+		bytes_wiped += written;
+		remaining -= written;
 	}
 
-	return ret;
+	if (fdatasync(g_mused_log->log_fd) < 0) {
+		ret = -errno;
+		LOGE("cannot sync data to volume with path");
+		return ret;
+	}
+
+	return MM_ERROR_NONE;
 }
-#endif
+
 static void _mmsvc_core_log_monitor(char *msg)
 {
 	g_return_if_fail(msg != NULL);
@@ -318,18 +282,11 @@ static void _mmsvc_core_log_monitor(char *msg)
 		return;
 	}
 
-	#if _BUFFER_CACHE
 	_mmsvc_core_log_write_buffer_cache_to_fd(msg);
 	if (_mmsvc_core_log_write_buffer_cache_to_fd(msg) != MM_ERROR_NONE)
 		LOGE("There was an error writing to testfile");
 	else if (write(g_mused_log->log_fd, "\n", 1) != 1)
 		LOGE("write %s", msg);
-	#else
-	if (write(g_mused_log->log_fd, msg, strlen(msg)) != strlen(msg))
-		LOGE("There was an error writing to testfile");
-	else if (write(g_mused_log->log_fd, "\n", 1) != 1)
-		LOGE("write %s", msg);
-	#endif
 
 	if (g_mused_log->count != 0)
 		g_timer_stop(g_mused_log->timer);
