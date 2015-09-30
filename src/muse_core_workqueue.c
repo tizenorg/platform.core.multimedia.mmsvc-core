@@ -5,8 +5,8 @@
 * See the accompanying LICENSE.txt for details.
 */
 
-#include "mmsvc_core_workqueue.h"
-#define WORK_THREAD_NUM 8
+#include "muse_core_workqueue.h"
+
 #define LL_ADD(item, list) { \
 	item->prev = NULL; \
 	item->next = list; \
@@ -20,17 +20,17 @@
 	item->prev = item->next = NULL; \
 }
 
-static mmsvc_core_workqueue_workqueue_t *g_workqueue;
+static muse_core_workqueue_workqueue_t *g_workqueue;
 
-static void *_mmsvc_core_workqueue_worker_function(void *ptr);
-static void _mmsvc_core_workqueue_shutdown(void);
-static void _mmsvc_core_workqueue_add_job(mmsvc_core_workqueue_job_t *job);
-static void _mmsvc_core_workqueue_init_instance(void (*shutdown)(void), void (*add_job)(mmsvc_core_workqueue_job_t *));
+static void *_muse_core_workqueue_worker_function(void *ptr);
+static void _muse_core_workqueue_shutdown(void);
+static void _muse_core_workqueue_add_job(muse_core_workqueue_job_t *job);
+static void _muse_core_workqueue_init_instance(void (*shutdown)(void), void (*add_job)(muse_core_workqueue_job_t *));
 
-static void *_mmsvc_core_workqueue_worker_function(void *ptr)
+static void *_muse_core_workqueue_worker_function(void *ptr)
 {
-	mmsvc_core_workqueue_worker_t *worker = (mmsvc_core_workqueue_worker_t *) ptr;
-	mmsvc_core_workqueue_job_t *job;
+	muse_core_workqueue_worker_t *worker = (muse_core_workqueue_worker_t *) ptr;
+	muse_core_workqueue_job_t *job;
 
 	while (1) {
 		/* Wait until we get notified. */
@@ -66,16 +66,16 @@ static void *_mmsvc_core_workqueue_worker_function(void *ptr)
 	}
 
 	pthread_mutex_unlock(&worker->workqueue->jobs_mutex);
-	MMSVC_FREE(worker);
+	MUSE_FREE(worker);
 
 	pthread_exit(NULL);
 }
 
-static void _mmsvc_core_workqueue_shutdown(void)
+static void _muse_core_workqueue_shutdown(void)
 {
 	LOGD("Enter");
 
-	mmsvc_core_workqueue_worker_t *worker = NULL;
+	muse_core_workqueue_worker_t *worker = NULL;
 	g_return_if_fail(g_workqueue != NULL);
 
 	/* Set all workers to terminate. */
@@ -90,7 +90,7 @@ static void _mmsvc_core_workqueue_shutdown(void)
 	LOGD("Leave");
 }
 
-static void _mmsvc_core_workqueue_add_job(mmsvc_core_workqueue_job_t *job)
+static void _muse_core_workqueue_add_job(muse_core_workqueue_job_t *job)
 {
 	LOGD("Enter");
 
@@ -101,7 +101,7 @@ static void _mmsvc_core_workqueue_add_job(mmsvc_core_workqueue_job_t *job)
 	LOGD("Leave");
 }
 
-static void _mmsvc_core_workqueue_init_instance(void (*shutdown)(void), void (*add_job)(mmsvc_core_workqueue_job_t *))
+static void _muse_core_workqueue_init_instance(void (*shutdown)(void), void (*add_job)(muse_core_workqueue_job_t *))
 {
 	g_return_if_fail(shutdown != NULL);
 	g_return_if_fail(add_job != NULL);
@@ -111,22 +111,22 @@ static void _mmsvc_core_workqueue_init_instance(void (*shutdown)(void), void (*a
 	g_workqueue->add_job = add_job;
 }
 
-mmsvc_core_workqueue_workqueue_t *mmsvc_core_workqueue_get_instance(void)
+muse_core_workqueue_workqueue_t *muse_core_workqueue_get_instance(void)
 {
 	if (g_workqueue == NULL)
-		mmsvc_core_workqueue_init(WORK_THREAD_NUM);
+		muse_core_workqueue_init(MUSE_WORK_THREAD_NUM);
 
 	return g_workqueue;
 }
 
-int mmsvc_core_workqueue_init(int numWorkers)
+int muse_core_workqueue_init(int numWorkers)
 {
-	mmsvc_core_workqueue_worker_t *worker;
+	muse_core_workqueue_worker_t *worker;
 	int i;
 	pthread_cond_t blank_cond = PTHREAD_COND_INITIALIZER;
 	pthread_mutex_t blank_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-	g_workqueue = calloc(1, sizeof(mmsvc_core_workqueue_workqueue_t));
+	g_workqueue = calloc(1, sizeof(muse_core_workqueue_workqueue_t));
 	if (!g_workqueue) {
 		LOGE("workqueue allocation failed");
 		return 1;
@@ -139,22 +139,22 @@ int mmsvc_core_workqueue_init(int numWorkers)
 	memcpy(&g_workqueue->jobs_cond, &blank_cond, sizeof(g_workqueue->jobs_cond));
 
 	for (i = 0; i < numWorkers; i++) {
-		worker = malloc(sizeof(mmsvc_core_workqueue_worker_t));
+		worker = malloc(sizeof(muse_core_workqueue_worker_t));
 		if (worker == NULL) {
 			LOGE("Failed to allocate all workers");
 			return 1;
 		}
 		memset(worker, 0, sizeof(*worker));
 		worker->workqueue = g_workqueue;
-		if (pthread_create(&worker->thread, NULL, _mmsvc_core_workqueue_worker_function, (void *)worker)) {
+		if (pthread_create(&worker->thread, NULL, _muse_core_workqueue_worker_function, (void *)worker)) {
 			LOGE("Failed to start all worker threads");
-			MMSVC_FREE(worker);
+			MUSE_FREE(worker);
 			return 1;
 		}
 		LL_ADD(worker, worker->workqueue->workers);
 	}
 
-	_mmsvc_core_workqueue_init_instance(_mmsvc_core_workqueue_shutdown, _mmsvc_core_workqueue_add_job);
+	_muse_core_workqueue_init_instance(_muse_core_workqueue_shutdown, _muse_core_workqueue_add_job);
 
 	return MM_ERROR_NONE;
 }
