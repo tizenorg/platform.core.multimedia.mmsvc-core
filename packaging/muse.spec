@@ -1,4 +1,4 @@
-Name:       mused
+Name:       muse
 Summary:    A Media Daemon library in Tizen Native API
 Version:    0.1.1
 Release:    0
@@ -74,18 +74,18 @@ install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/muse-server.socket
 
 
 %files
-%manifest mused.manifest
-%{_libdir}/libmused.so.*
+%manifest muse.manifest
+%{_libdir}/libmuse.so.*
 %{_datadir}/license/%{name}
 %{_unitdir}/muse-server.service
 %{_unitdir}/multi-user.target.wants/muse-server.service
 %{_unitdir}/muse-server.socket
 %{_unitdir}/sockets.target.wants/muse-server.socket
-%{_datadir}/mused/mused.conf
+%{_datadir}/muse/muse.conf
 /usr/bin/*
 
 
 %files devel
 %{_includedir}/media/*.h
 %{_libdir}/pkgconfig/*.pc
-%{_libdir}/libmused.so
+%{_libdir}/libmuse.so

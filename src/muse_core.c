@@ -1,5 +1,5 @@
 /*
- * mmsvc-core
+ * muse-core
  *
  * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
  *
@@ -19,55 +19,53 @@
  *
  */
 
-#include "mmsvc_core.h"
-#include "mmsvc_core_private.h"
-#include "mmsvc_core_config.h"
-#include "mmsvc_core_internal.h"
-#include "mmsvc_core_ipc.h"
-#include "mmsvc_core_log.h"
-#include "mmsvc_core_module.h"
-#include "mmsvc_core_workqueue.h"
+#include "muse_core.h"
+#include "muse_core_private.h"
+#include "muse_core_config.h"
+#include "muse_core_internal.h"
+#include "muse_core_ipc.h"
+#include "muse_core_log.h"
+#include "muse_core_module.h"
+#include "muse_core_workqueue.h"
 
-#define FILENAMELEN 32
-#define WORK_THREAD_NUM 8
-#define LOG_SLEEP_TIMER 10
+#define MUSE_LOG_SLEEP_TIMER 10
 
-static MMServer *server;
+static muse_core_t *server;
 static GMainLoop *g_loop;
 static GThread *g_thread;
-static char *UDS_files[MUSED_CHANNEL_MAX] = {SOCKFILE0, SOCKFILE1};
+static char *UDS_files[MUSE_CHANNEL_MAX] = {SOCKFILE0, SOCKFILE1};
 
-static gboolean (*job_functions[MUSED_CHANNEL_MAX])
-	(mmsvc_core_workqueue_job_t *job) = {
-		mmsvc_core_ipc_job_function,
-		mmsvc_core_ipc_data_job_function
+static gboolean (*job_functions[MUSE_CHANNEL_MAX])
+	(muse_core_workqueue_job_t *job) = {
+		muse_core_ipc_job_function,
+		muse_core_ipc_data_job_function
 	};
 
-static int _mmsvc_core_set_nonblocking(int fd);
-static int _mmsvc_core_check_server_is_running(void);
-static MMServer *_mmsvc_core_create_new_server_from_fd(int fd[], int type);
-static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
+static int _muse_core_set_nonblocking(int fd);
+static int _muse_core_check_server_is_running(void);
+static muse_core_t *_muse_core_create_new_server_from_fd(int fd[], int type);
+static gboolean _muse_core_connection_handler(GIOChannel *source,
 		GIOCondition condition, gpointer data);
-static int _mmsvc_core_free(MMServer *server);
+static int _muse_core_free(muse_core_t *server);
 
-static int _mmsvc_core_set_nonblocking(int fd)
+static int _muse_core_set_nonblocking(int fd)
 {
 	int flags = fcntl(fd, F_GETFL, NULL);
 
 	if (flags >= 0) {
 		LOGD("fcntl nonblocking");
 		if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-			LOGE("fcntl(%d, F_SETFL)", fd);
+			LOGE("fcntl (%d, F_SETFL) %s", fd, strerror(errno));
 			return -1;
 		} else {
-			LOGD("fcntl(%d, F_SETFL)");
+			LOGD("fcntl (%d, F_SETFL)", fd);
 		}
 	}
 
 	return MM_ERROR_NONE;
 }
 
-static int _mmsvc_core_check_server_is_running(void)
+static int _muse_core_check_server_is_running(void)
 {
 	int fd, already_running;
 	int ret = -1;
@@ -108,7 +106,7 @@ static int _mmsvc_core_check_server_is_running(void)
 	return 1;
 }
 
-static bool _mmsvc_core_attach_server(int fd, MMSVC_CORE_ClientCallback callback, gpointer param)
+static bool _muse_core_attach_server(int fd, MUSE_MODULE_Callback callback, gpointer param)
 {
 	GIOChannel *channel;
 	GSource *src = NULL;
@@ -129,17 +127,17 @@ static bool _mmsvc_core_attach_server(int fd, MMSVC_CORE_ClientCallback callback
 	return true;
 }
 
-static MMServer *_mmsvc_core_create_new_server_from_fd(int fd[], int type)
+static muse_core_t *_muse_core_create_new_server_from_fd(int fd[], int type)
 {
-	MMServer *server;
+	muse_core_t *server;
 	int i;
 
 	LOGD("Enter");
-	server = malloc(sizeof(MMServer));
+	server = malloc(sizeof(muse_core_t));
 	g_return_val_if_fail(server != NULL, NULL);
 
-	server->fd = fd[MUSED_CHANNEL_MSG];
-	server->data_fd = fd[MUSED_CHANNEL_DATA];
+	server->fd = fd[MUSE_CHANNEL_MSG];
+	server->data_fd = fd[MUSE_CHANNEL_DATA];
 	server->type = type;
 	server->stop = 0;
 	server->retval = 0;
@@ -147,11 +145,11 @@ static MMServer *_mmsvc_core_create_new_server_from_fd(int fd[], int type)
 	/*initiate server */
 	g_atomic_int_set(&server->running, 1);
 
-	for (i = 0; i < MUSED_CHANNEL_MAX; i++) {
-		if (!_mmsvc_core_attach_server(fd[i],
-					_mmsvc_core_connection_handler, (gpointer)(intptr_t) i)) {
+	for (i = 0; i < MUSE_CHANNEL_MAX; i++) {
+		if (!_muse_core_attach_server(fd[i],
+					_muse_core_connection_handler, (gpointer)(intptr_t) i)) {
 			LOGD("Fail to attach server fd %d", fd[i]);
-			MMSVC_FREE(server);
+			MUSE_FREE(server);
 			return NULL;
 		}
 	}
@@ -160,7 +158,7 @@ static MMServer *_mmsvc_core_create_new_server_from_fd(int fd[], int type)
 	return server;
 }
 
-static int _mmsvc_core_free(MMServer *server)
+static int _muse_core_free(muse_core_t *server)
 {
 	int retval = -1;
 	int i;
@@ -170,29 +168,28 @@ static int _mmsvc_core_free(MMServer *server)
 
 	retval = server->retval;
 	close(server->fd);
-	for (i = 0; i < MUSED_CHANNEL_MAX; i++)
+	for (i = 0; i < MUSE_CHANNEL_MAX; i++)
 		remove(UDS_files[i]);
 	remove(LOCKFILE);
-	MMSVC_FREE(server);
-	mmsvc_core_workqueue_get_instance()->shutdown();
-	mmsvc_core_config_get_instance()->free();
-	mmsvc_core_ipc_get_instance()->deinit();
+	MUSE_FREE(server);
+	muse_core_workqueue_get_instance()->shutdown();
+	muse_core_config_get_instance()->free();
+	muse_core_ipc_get_instance()->deinit();
 	LOGD("Leave");
 	return retval;
 }
 
-int _mmsvc_core_server_new(mused_channel_e channel)
+int _muse_core_server_new(muse_core_channel_e channel)
 {
 	int fd;
 	struct sockaddr *address;
 	struct sockaddr_un addr_un;
 	socklen_t address_len;
 
-	if (channel >= MUSED_CHANNEL_MAX)
+	if (channel >= MUSE_CHANNEL_MAX)
 		return -1;
 
 	unlink(UDS_files[channel]);
-	LOGD("Enter");
 
 	/* Create Socket */
 	fd = socket(AF_UNIX, SOCK_STREAM, 0); /* Unix Domain Socket */
@@ -229,24 +226,24 @@ int _mmsvc_core_server_new(mused_channel_e channel)
 		return -1;
 	}
 
-	if (_mmsvc_core_set_nonblocking(fd) < 0)
+	if (_muse_core_set_nonblocking(fd) < 0)
 		LOGE("failed to set server socket to non-blocking");
 
 	return fd;
 }
 
-static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
+static gboolean _muse_core_connection_handler(GIOChannel *source,
 		GIOCondition condition, gpointer data)
 {
 	int client_sockfd, server_sockfd;
 	socklen_t client_len;
 	struct sockaddr_un client_address;
-	mused_channel_e channel = (mused_channel_e)data;
+	muse_core_channel_e channel = (muse_core_channel_e)data;
 
 	LOGD("Enter");
 
-	Client client = NULL;
-	mmsvc_core_workqueue_job_t *job = NULL;
+	muse_module_t module = NULL;
+	muse_core_workqueue_job_t *job = NULL;
 
 
 	server_sockfd = g_io_channel_unix_get_fd(source);
@@ -260,28 +257,28 @@ static gboolean _mmsvc_core_connection_handler(GIOChannel *source,
 		goto out;
 	}
 
-	if (channel == MUSED_CHANNEL_MSG) {
-		if ((client = malloc(sizeof(_Client))) == NULL) {
+	if (channel == MUSE_CHANNEL_MSG) {
+		if ((module = malloc(sizeof(_muse_module))) == NULL) {
 			LOGE("failed to allocated memory for client stat");
 			goto out;
 		}
 
-		memset(client, 0, sizeof(_Client));
-		client->ch[channel].fd = client_sockfd;
+		memset(module, 0, sizeof(_muse_module));
+		module->ch[channel].fd = client_sockfd;
 	}
 
-	if ((job = malloc(sizeof(mmsvc_core_workqueue_job_t))) == NULL) {
+	if ((job = malloc(sizeof(muse_core_workqueue_job_t))) == NULL) {
 		LOGE("failed to allocate memory for job state");
 		goto out;
 	}
 
 	job->job_function = job_functions[channel];
-	if (channel == MUSED_CHANNEL_MSG)
-		job->user_data = client;
+	if (channel == MUSE_CHANNEL_MSG)
+		job->user_data = module;
 	else
 		job->user_data = (void *)(intptr_t)client_sockfd;
 
-	mmsvc_core_workqueue_get_instance()->add_job(job);
+	muse_core_workqueue_get_instance()->add_job(job);
 
 	LOGD("Leave");
 	return TRUE;
@@ -289,21 +286,21 @@ out:
 	if (client_sockfd)
 		close(client_sockfd);
 
-	MMSVC_FREE(client);
-	MMSVC_FREE(job);
+	MUSE_FREE(module);
+	MUSE_FREE(job);
 
 	LOGE("FALSE");
 	return FALSE;
 }
 
-static int _mmsvc_core_client_new(mused_channel_e channel)
+static int _muse_core_client_new(muse_core_channel_e channel)
 {
 	struct sockaddr_un address;
 	int len, ret = -1;
 	int sockfd;
 
 	LOGD("Enter");
-	if (channel >= MUSED_CHANNEL_MAX)
+	if (channel >= MUSE_CHANNEL_MAX)
 		return -1;
 
 	/*Create socket*/
@@ -336,11 +333,11 @@ static int _mmsvc_core_client_new(mused_channel_e channel)
 	return sockfd;
 }
 
-gpointer mmsvc_core_main_loop(gpointer data)
+gpointer muse_core_main_loop(gpointer data)
 {
 	#if 0
 	while (1) {
-		sleep(LOG_SLEEP_TIMER);
+		sleep(MUSE_LOG_SLEEP_TIMER);
 		LOGD("polling %d\n", g_main_loop_is_running(loop));
 	}
 	#endif
@@ -348,13 +345,13 @@ gpointer mmsvc_core_main_loop(gpointer data)
 	return NULL;
 }
 
-MMServer *mmsvc_core_new()
+muse_core_t *muse_core_new()
 {
-	int fd[MUSED_CHANNEL_MAX];
+	int fd[MUSE_CHANNEL_MAX];
 	int i;
 
-	for (i = 0; i < MUSED_CHANNEL_MAX; i++) {
-		fd[i] = _mmsvc_core_server_new(i);
+	for (i = 0; i < MUSE_CHANNEL_MAX; i++) {
+		fd[i] = _muse_core_server_new(i);
 		if (fd[i] < 0) {
 			LOGE("Failed to create socket server %d", i);
 			return NULL;
@@ -362,24 +359,24 @@ MMServer *mmsvc_core_new()
 	}
 
 	/* Initialize work queue */
-	if (mmsvc_core_workqueue_init(WORK_THREAD_NUM)) {
-		LOGE("mmsvc_core_new : Failed to initialize the workqueue");
-		for (i = 0; i < MUSED_CHANNEL_MAX; i++)
+	if (muse_core_workqueue_init(MUSE_WORK_THREAD_NUM)) {
+		LOGE("muse_core_new : Failed to initialize the workqueue");
+		for (i = 0; i < MUSE_CHANNEL_MAX; i++)
 			close(fd[i]);
-		mmsvc_core_workqueue_get_instance()->shutdown();
+		muse_core_workqueue_get_instance()->shutdown();
 		return NULL;
 	}
 
-	return _mmsvc_core_create_new_server_from_fd(fd, READ | PERSIST);
+	return _muse_core_create_new_server_from_fd(fd, READ | PERSIST);
 }
 
-int mmsvc_core_run()
+int muse_core_run()
 {
 	int ret = -1;
 
 	LOGD("Enter");
 
-	ret = _mmsvc_core_check_server_is_running();
+	ret = _muse_core_check_server_is_running();
 	if (ret == -1) {
 		return -1;
 	} else if (ret == 0) {
@@ -390,9 +387,9 @@ int mmsvc_core_run()
 	/* Sigaction */
 	g_loop = g_main_loop_new(NULL, FALSE);
 
-	g_thread = g_thread_new("mmsvc_thread", mmsvc_core_main_loop, g_loop);
+	g_thread = g_thread_new("muse_core_thread", muse_core_main_loop, g_loop);
 
-	server = mmsvc_core_new();
+	server = muse_core_new();
 	if (!server) {
 		g_main_loop_unref(g_loop);
 		return 1;
@@ -402,74 +399,74 @@ int mmsvc_core_run()
 	g_main_loop_run(g_loop);
 
 	LOGD("Leave");
-	return _mmsvc_core_free(server);
+	return _muse_core_free(server);
 }
 
-void mmsvc_core_cmd_dispatch(Client client, mused_domain_event_e ev)
+void muse_core_cmd_dispatch(muse_module_t module, muse_module_event_e ev)
 {
-	MMSVC_MODULE_CMD_DispatchFunc *cmd_dispatcher = NULL;
+	MUSE_MODULE_CMD_DispatchFunc *cmd_dispatcher = NULL;
 
-	g_return_if_fail(client->ch[MUSED_CHANNEL_MSG].module != NULL);
+	g_return_if_fail(module->ch[MUSE_CHANNEL_MSG].dll_handle != NULL);
 
-	g_module_symbol(client->ch[MUSED_CHANNEL_MSG].module, CMD_DISPATCHER, (gpointer *)&cmd_dispatcher);
+	g_module_symbol(module->ch[MUSE_CHANNEL_MSG].dll_handle, CMD_DISPATCHER, (gpointer *)&cmd_dispatcher);
 
 	if (cmd_dispatcher && cmd_dispatcher[ev]) {
 		LOGD("cmd_dispatcher: %p", cmd_dispatcher);
-		cmd_dispatcher[ev](client);
+		cmd_dispatcher[ev](module);
 	} else {
 		LOGE("error - cmd_dispatcher");
 		return;
 	}
 }
 
-int mmsvc_core_client_new(void)
+int muse_core_client_new(void)
 {
-	return _mmsvc_core_client_new(MUSED_CHANNEL_MSG);
+	return _muse_core_client_new(MUSE_CHANNEL_MSG);
 }
 
-int mmsvc_core_client_new_data_ch(void)
+int muse_core_client_new_data_ch(void)
 {
-	return _mmsvc_core_client_new(MUSED_CHANNEL_DATA);
+	return _muse_core_client_new(MUSE_CHANNEL_DATA);
 }
 
-int mmsvc_core_client_get_msg_fd(Client client)
+int muse_core_client_get_msg_fd(muse_module_t module)
 {
-	g_return_val_if_fail(client, -1);
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
 
-	return client->ch[MUSED_CHANNEL_MSG].fd;
+	return module->ch[MUSE_CHANNEL_MSG].fd;
 }
 
-int mmsvc_core_client_get_data_fd(Client client)
+int muse_core_client_get_data_fd(muse_module_t module)
 {
-	g_return_val_if_fail(client, -1);
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
 
-	return client->ch[MUSED_CHANNEL_DATA].fd;
+	return module->ch[MUSE_CHANNEL_DATA].fd;
 }
-void mmsvc_core_client_set_cust_data(Client client, void *data)
+void muse_core_client_set_cust_data(muse_module_t module, void *data)
 {
-	g_return_if_fail(client);
-	client->cust_data = data;
-}
-
-void *mmsvc_core_client_get_cust_data(Client client)
-{
-	g_return_val_if_fail(client, NULL);
-	return client->cust_data;
+	g_return_if_fail(module);
+	module->usr_data= data;
 }
 
-char *mmsvc_core_client_get_msg(Client client)
+void *muse_core_client_get_cust_data(muse_module_t module)
 {
-	g_return_val_if_fail(client, NULL);
-	return (client->recvMsg + client->msg_offset);
+	g_return_val_if_fail(module, NULL);
+	return module->usr_data;
 }
 
-int mmsvc_core_client_get_capi(Client client)
+char *muse_core_client_get_msg(muse_module_t module)
 {
-	g_return_val_if_fail(client, -1);
-	return client->api_client;
+	g_return_val_if_fail(module, NULL);
+	return (module->recvMsg + module->msg_offset);
 }
 
-void mmsvc_core_connection_close(int sock_fd)
+int muse_core_client_get_capi(muse_module_t module)
+{
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
+	return module->disp_api;
+}
+
+void muse_core_connection_close(int sock_fd)
 {
 	if (sock_fd > 0) {
 		LOGD("[%d] shutdown", sock_fd);
@@ -478,27 +475,27 @@ void mmsvc_core_connection_close(int sock_fd)
 	}
 }
 
-void mmsvc_core_worker_exit(Client client)
+void muse_core_worker_exit(muse_module_t module)
 {
 	LOGD("Enter");
-	g_return_if_fail(client);
+	g_return_if_fail(module);
 
-	mmsvc_core_connection_close(client->ch[MUSED_CHANNEL_MSG].fd);
-	mmsvc_core_connection_close(client->ch[MUSED_CHANNEL_DATA].fd);
+	muse_core_connection_close(module->ch[MUSE_CHANNEL_MSG].fd);
+	muse_core_connection_close(module->ch[MUSE_CHANNEL_DATA].fd);
 
-	g_return_if_fail(client->ch[MUSED_CHANNEL_MSG].p_gthread != NULL);
-	LOGD("%p thread exit\n", client->ch[MUSED_CHANNEL_MSG].p_gthread);
-	g_thread_unref(client->ch[MUSED_CHANNEL_MSG].p_gthread);
+	g_return_if_fail(module->ch[MUSE_CHANNEL_MSG].p_gthread != NULL);
+	LOGD("%p thread exit\n", module->ch[MUSE_CHANNEL_MSG].p_gthread);
+	g_thread_unref(module->ch[MUSE_CHANNEL_MSG].p_gthread);
 
-	if (client->ch[MUSED_CHANNEL_DATA].p_gthread)
-		g_thread_unref(client->ch[MUSED_CHANNEL_DATA].p_gthread);
-	MMSVC_FREE(client);
+	if (module->ch[MUSE_CHANNEL_DATA].p_gthread)
+		g_thread_unref(module->ch[MUSE_CHANNEL_DATA].p_gthread);
+	MUSE_FREE(module);
 
 	LOGD("Leave");
 	g_thread_exit(NULL);
 }
 
-unsigned mmsvc_core_get_atomic_uint(void)
+unsigned muse_core_get_atomic_uint(void)
 {
 	static guint atom = 0;
 

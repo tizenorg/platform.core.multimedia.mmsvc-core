@@ -1,5 +1,5 @@
 /*
- * mmsvc-core
+ * muse-core
  *
  * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
  *
@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef __MMSVC_CORE_PRIVATE_H__
-#define __MMSVC_CORE_PRIVATE_H__
+#ifndef __MUSE_CORE_PRIVATE_H__
+#define __MUSE_CORE_PRIVATE_H__
 
 #include <stdint.h>
 #include <glib.h>
@@ -30,35 +30,35 @@
 extern "C" {
 #endif
 
-typedef gboolean(*MMSVC_CORE_ClientCallback) (GIOChannel * source, GIOCondition condition, gpointer data);
+typedef gboolean(*MUSE_MODULE_Callback) (GIOChannel * source, GIOCondition condition, gpointer data);
 
 typedef enum {
-	MUSED_CHANNEL_MSG,
-	MUSED_CHANNEL_DATA,
-	MUSED_CHANNEL_MAX
-} mused_channel_e;
+	MUSE_CHANNEL_MSG,
+	MUSE_CHANNEL_DATA,
+	MUSE_CHANNEL_MAX
+} muse_core_channel_e;
 
 typedef struct {
 	GThread * p_gthread;
 	int fd;
 	union {
-		GModule *module;
+		GModule *dll_handle;
 		struct {
 			GQueue *queue;
 			GMutex mutex;
 			GCond cond;
 		};
 	};
-} channel_info;
+} muse_core_channel_info;
 
-typedef struct __Client{
-	channel_info ch[MUSED_CHANNEL_MAX];
-	char recvMsg[MM_MSG_MAX_LENGTH];
+typedef struct __muse_module {
+	muse_core_channel_info ch[MUSE_CHANNEL_MAX];
+	char recvMsg[MUSE_MSG_MAX_LENGTH];
 	int msg_offset;
-	int api_client;
-	gpointer cust_data;
+	int disp_api;
+	gpointer usr_data;
 	intptr_t handle;
-} _Client;
+} _muse_module;
 
 typedef struct {
 	int fd;
@@ -67,13 +67,13 @@ typedef struct {
 	int stop;
 	int retval;
 	gint running;
-} MMServer;
+} muse_core_t;
 
-gpointer mmsvc_core_main_loop(gpointer data);
-MMServer *mmsvc_core_new();
-gboolean mmsvc_core_connection_handler(GIOChannel * source, GIOCondition condition, gpointer data);
+gpointer muse_core_main_loop(gpointer data);
+muse_core_t *muse_core_new();
+gboolean muse_core_connection_handler(GIOChannel * source, GIOCondition condition, gpointer data);
 
 #ifdef __cplusplus
 }
 #endif
-#endif	/*__MMSVC_CORE_PRIVATE_H__*/
+#endif	/*__MUSE_CORE_PRIVATE_H__*/

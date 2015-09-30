@@ -1,5 +1,5 @@
 /*
- * mmsvc-core
+ * muse-core
  *
  * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
  *
@@ -19,19 +19,19 @@
  *
  */
 
-#include "mmsvc_core.h"
-#include "mmsvc_core_internal.h"
-#include "mmsvc_core_config.h"
-#include "mmsvc_core_ipc.h"
-#include "mmsvc_core_log.h"
-#include "mmsvc_core_tool.h"
+#include "muse_core.h"
+#include "muse_core_internal.h"
+#include "muse_core_config.h"
+#include "muse_core_ipc.h"
+#include "muse_core_log.h"
+#include "muse_core_tool.h"
 #include <gst/gst.h>
 
-static void _mmsvc_core_server_setup_syslog(void);
-static void _mmsvc_core_server_gst_init(char **cmd);
-extern int mmsvc_core_run();
+static void _muse_core_server_setup_syslog(void);
+static void _muse_core_server_gst_init(char **cmd);
+extern int muse_core_run();
 
-static void _mmsvc_core_server_setup_syslog(void)
+static void _muse_core_server_setup_syslog(void)
 {
 	int flags = LOG_CONS|LOG_NDELAY|LOG_PID;
 	if (isatty(1))
@@ -41,7 +41,7 @@ static void _mmsvc_core_server_setup_syslog(void)
 	LOGD("openlog - mused");
 }
 
-static void _mmsvc_core_server_gst_init(char **cmd)
+static void _muse_core_server_gst_init(char **cmd)
 {
 	gint* argc = NULL;
 	gchar** argv = NULL;
@@ -50,7 +50,7 @@ static void _mmsvc_core_server_gst_init(char **cmd)
 	int i;
 	int gst_param_cnt;
 
-	gst_param_cnt = mmsvc_core_config_get_instance()->get_gst_param_cnt();
+	gst_param_cnt = muse_core_config_get_instance()->get_gst_param_cnt();
 	argc = malloc(sizeof(gint*));
 	g_return_val_if_fail(argc != NULL, NULL);
 
@@ -60,10 +60,8 @@ static void _mmsvc_core_server_gst_init(char **cmd)
 	memset(argv, 0, sizeof(gchar*) * (gst_param_cnt + 1));
 
 	argv[0] = g_strdup(cmd[0]);
-	for (*argc = 1; (*argc) <= gst_param_cnt; (*argc)++) {
-		argv[*argc] = g_strdup(mmsvc_core_config_get_instance()->get_gst_param_str((*argc) - 1));
-		LOGD("mmsvc_gst_param_str[%d] : %s", *argc, argv[*argc]);
-	}
+	for (*argc = 1; (*argc) <= gst_param_cnt; (*argc)++)
+		argv[*argc] = g_strdup(muse_core_config_get_instance()->get_gst_param_str((*argc) - 1));
 
 	/* initializing gstreamer */
 	ret = gst_init_check (argc, &argv, &err);
@@ -75,11 +73,11 @@ static void _mmsvc_core_server_gst_init(char **cmd)
 
 	/* release */
 	for (i = 0; i < *argc; i++) {
-		MMSVC_FREE(argv[i]);
+		MUSE_FREE(argv[i]);
 	}
 
-	MMSVC_FREE(argv);
-	MMSVC_FREE(argc);
+	MUSE_FREE(argv);
+	MUSE_FREE(argc);
 }
 
 int main(int argc, char **argv)
@@ -87,14 +85,14 @@ int main(int argc, char **argv)
 	int result;
 	pid_t pid, sid;
 
-	_mmsvc_core_server_setup_syslog();
-	mmsvc_core_config_init();
-	mmsvc_core_log_init();
-	mmsvc_core_ipc_init();
-	_mmsvc_core_server_gst_init(argv);
+	_muse_core_server_setup_syslog();
+	muse_core_config_init();
+	muse_core_log_init();
+	muse_core_ipc_init();
+	_muse_core_server_gst_init(argv);
 
 	if (argc > 1 && argv)
-		mmsvc_core_tool_parse_params(argc, argv);
+		muse_core_tool_parse_params(argc, argv);
 
 	/* daemon_init */
 	if (getpid() == 1) {
@@ -123,5 +121,5 @@ int main(int argc, char **argv)
 	result = chdir("/");
 	LOGD("result = %d", result);
 
-	return mmsvc_core_run();
+	return muse_core_run();
 }

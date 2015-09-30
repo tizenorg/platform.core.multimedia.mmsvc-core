@@ -1,5 +1,6 @@
 [Unit]
 Description=muse server
+After=display-manager-run.service
 
 [Service]
 Type=forking

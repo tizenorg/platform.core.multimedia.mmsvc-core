@@ -1,5 +1,5 @@
 [Socket]
-ListenStream=/tmp/.mmsvc_core_socket
+ListenStream=/tmp/.muse_core_socket
 Service=muse-server.service
 
 [Install]
