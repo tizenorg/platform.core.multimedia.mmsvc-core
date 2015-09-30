@@ -1,5 +1,5 @@
 /*
- * mmsvc-core
+ * muse-core
  *
  * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
  *
@@ -18,8 +18,8 @@
  * limitations under the License.
  *
  */
-#ifndef __MMSVC_CORE_LOG_H__
-#define __MMSVC_CORE_LOG_H__
+#ifndef __MUSE_CORE_LOG_H__
+#define __MUSE_CORE_LOG_H__
 
 #ifdef _cplusplus
 extern "C" {
@@ -27,9 +27,9 @@ extern "C" {
 
 #include <time.h>
 #include <gmodule.h>
-#include "mmsvc_core_msg_json.h"
+#include "muse_core_msg_json.h"
 
-typedef struct mmsvc_core_log {
+typedef struct muse_core_log {
 	int type;
 	unsigned refs;
 	char *buf;
@@ -44,16 +44,16 @@ typedef struct mmsvc_core_log {
 	void (*set_msg) (char *);
 	char* (*get_msg) (void);
 	GModule* (*get_module_value) (int);
-	gboolean module_opened[MMSVC_CLIENT_MAX];
-	GModule *module[MMSVC_CLIENT_MAX];
-} mmsvc_core_log_t;
+	gboolean module_opened[MUSE_MODULE_MAX];
+	GModule *module[MUSE_MODULE_MAX];
+} muse_core_log_t;
 
-/*mmsvc_core_log_init must be called before mmsvc_core_log_get_instance*/
-mmsvc_core_log_t *mmsvc_core_log_get_instance(void);
-void mmsvc_core_log_init(void);
+/*muse_core_log_init must be called before muse_core_log_get_instance*/
+muse_core_log_t *muse_core_log_get_instance(void);
+void muse_core_log_init(void);
 
 #ifdef _cplusplus
 }
 #endif
 
-#endif	/*__MMSVC_CORE_LOG_H__*/
+#endif	/*__MUSE_CORE_LOG_H__*/

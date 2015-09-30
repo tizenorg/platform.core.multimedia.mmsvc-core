@@ -5,17 +5,17 @@ SET(fw_name "mused")
 PROJECT(${fw_name})
 
 SET(SRCS
-       src/mmsvc_core.c
-       src/mmsvc_core_config.c
-       src/mmsvc_core_ipc.c
-       src/mmsvc_core_log.c
-       src/mmsvc_core_module.c
-       src/mmsvc_core_msg_json.c
-       src/mmsvc_core_tool.c
-       src/mmsvc_core_workqueue.c
+       src/muse_core.c
+       src/muse_core_config.c
+       src/muse_core_ipc.c
+       src/muse_core_log.c
+       src/muse_core_module.c
+       src/muse_core_msg_json.c
+       src/muse_core_tool.c
+       src/muse_core_workqueue.c
        )
 SET(SRC-SERVER
-       src/mmsvc_core_server.c
+       src/muse_core_server.c
        )
 
 SET(CMAKE_INSTALL_PREFIX /usr)
