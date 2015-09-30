@@ -1,5 +1,5 @@
 /*
- * mmsvc-core
+ * muse-core
  *
  * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
  *
@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef __MMSVC_CORE_INTERNAL_H__
-#define __MMSVC_CORE_INTERNAL_H__
+#ifndef __MUSE_CORE_INTERNAL_H__
+#define __MUSE_CORE_INTERNAL_H__
 
 #ifdef _cplusplus
 extern "C" {
@@ -62,9 +62,9 @@ extern "C" {
 #undef LOG_TAG
 #define LOG_TAG "TIZEN_N_MUSED"
 #define LOGFILE "/var/log/muse-server.log"
-#define LOCKFILE "/tmp/.mmsvc-core.lock"
-#define SOCKFILE0 "/tmp/.mmsvc_core_socket"
-#define SOCKFILE1 "/tmp/.mmsvc_core_data_socket"
+#define LOCKFILE "/tmp/.muse_core.lock"
+#define SOCKFILE0 "/tmp/.muse_core_socket"
+#define SOCKFILE1 "/tmp/.muse_core_data_socket"
 
 #define TIMEOUT	0x01
 /** Wait for a socket or FD to become readable */
@@ -79,9 +79,9 @@ extern "C" {
 
 #define DISPATCHER "dispatcher"
 #define CMD_DISPATCHER "cmd_dispatcher"
-#define MMSVC_FREE(src) { if(src) {g_free(src); src = NULL;} }
+#define MUSE_FREE(src) { if(src) {g_free(src); src = NULL;} }
 
 #ifdef __cplusplus
 }
 #endif
-#endif	/*__MMSVC_CORE_INTERNAL_H__*/
+#endif	/*__MUSE_CORE_INTERNAL_H__*/

@@ -1,5 +1,5 @@
 /*
- * mmsvc-core
+ * muse-core
  *
  * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
  *
@@ -19,18 +19,18 @@
  *
  */
 
-#include "mmsvc_core_internal.h"
-#include "mmsvc_core_log.h"
-#include "mmsvc_core_tool.h"
+#include "muse_core_internal.h"
+#include "muse_core_log.h"
+#include "muse_core_tool.h"
 #include <fts.h>
 
 #define VERSION "0.0.1"
 
-static int _mmsvc_core_tool_getopt(int argc, char **argv, const char *opts);
+static int _muse_core_tool_getopt(int argc, char **argv, const char *opts);
 
-int mmsvc_tool_optind = 1;
-int mmsvc_tool_optopt;
-char *mmsvc_tool_optarg;
+int muse_tool_optind = 1;
+int muse_tool_optopt;
+char *muse_tool_optarg;
 
 static const char *pid_file = NULL;
 static const char *out_file = NULL;
@@ -38,53 +38,53 @@ static const char *err_file = NULL;
 static const char *lock_file = NULL;
 static bool be_verbose = FALSE;
 static const char *user  = NULL;
-static char **mmsvc_cmd = NULL;
+static char **muse_cmd = NULL;
 static const char *cwd = "/";
 static int append = 0;
 
-static int _mmsvc_core_tool_getopt(int argc, char **argv, const char *opts)
+static int _muse_core_tool_getopt(int argc, char **argv, const char *opts)
 {
 	static int si = 1;
 	register int ri;
 	register char *cp;
 
 	if (si == 1) {
-		if (mmsvc_tool_optind >= argc ||argv[mmsvc_tool_optind][0] != '-' || argv[mmsvc_tool_optind][1] == '\0') {
+		if (muse_tool_optind >= argc ||argv[muse_tool_optind][0] != '-' || argv[muse_tool_optind][1] == '\0') {
 			return(EOF);
-		} else if (strcmp(argv[mmsvc_tool_optind], "--") == 0) {
-			mmsvc_tool_optind++;
+		} else if (strcmp(argv[muse_tool_optind], "--") == 0) {
+			muse_tool_optind++;
 			return(EOF);
 		}
 	}
-	mmsvc_tool_optopt = ri = argv[mmsvc_tool_optind][si];
+	muse_tool_optopt = ri = argv[muse_tool_optind][si];
 	if (ri == ':' || (cp=strchr(opts, ri)) == NULL) {
-		if (argv[mmsvc_tool_optind][++si] == '\0') {
-			mmsvc_tool_optind++;
+		if (argv[muse_tool_optind][++si] == '\0') {
+			muse_tool_optind++;
 			si = 1;
 		}
 		return('?');
 	}
 	if (*++cp == ':') {
-		if (argv[mmsvc_tool_optind][si+1] != '\0') {
-			mmsvc_tool_optarg = &argv[mmsvc_tool_optind++][si+1];
-			LOGD("%s", mmsvc_tool_optarg);
-		} else if (++mmsvc_tool_optind >= argc) {
+		if (argv[muse_tool_optind][si+1] != '\0') {
+			muse_tool_optarg = &argv[muse_tool_optind++][si+1];
+			LOGD("%s", muse_tool_optarg);
+		} else if (++muse_tool_optind >= argc) {
 			LOGE(": option requires an argument - %c", ri);
 			si = 1;
 			return('?');
 		} else {
-			mmsvc_tool_optarg = argv[mmsvc_tool_optind++];
-			LOGD("%s", mmsvc_tool_optarg);
+			muse_tool_optarg = argv[muse_tool_optind++];
+			LOGD("%s", muse_tool_optarg);
 		}
 		si = 1;
 	} else {
-		if (argv[mmsvc_tool_optind][++si] == '\0') {
+		if (argv[muse_tool_optind][++si] == '\0') {
 			si = 1;
-			mmsvc_tool_optind++;
+			muse_tool_optind++;
 		}
-		mmsvc_tool_optarg = NULL;
+		muse_tool_optarg = NULL;
 	}
-	LOGD("mmsvc_tool_optind: %d", mmsvc_tool_optind);
+	LOGD("muse_tool_optind: %d", muse_tool_optind);
 	return(ri);
 }
 
@@ -95,7 +95,7 @@ static int _mmsvc_core_tool_getopt(int argc, char **argv, const char *opts)
  *     argc - argument count, as passed to main()
  *     argv - argument vector, as passed to main()
  */
-void mmsvc_core_tool_parse_params(int argc, char **argv)
+void muse_core_tool_parse_params(int argc, char **argv)
 {
 	int opt;
 	int argsLeft;
@@ -103,19 +103,19 @@ void mmsvc_core_tool_parse_params(int argc, char **argv)
 	LOGD("Enter");
 	opterr = 0;
 
-	while ((opt = _mmsvc_core_tool_getopt(argc, argv, "ac:u:p:vo:e:l:")) != -1) {
+	while ((opt = _muse_core_tool_getopt(argc, argv, "ac:u:p:vo:e:l:")) != -1) {
 		switch (opt) {
 		case 'a':
 			append = 1;
 			break;
 
 		case 'c':
-			cwd = mmsvc_tool_optarg;
+			cwd = muse_tool_optarg;
 			break;
 
 		case 'p':
 
-			pid_file = mmsvc_tool_optarg;
+			pid_file = muse_tool_optarg;
 			break;
 
 		case 'v':
@@ -123,20 +123,20 @@ void mmsvc_core_tool_parse_params(int argc, char **argv)
 			break;
 
 		case 'u':
-			user = mmsvc_tool_optarg;
+			user = muse_tool_optarg;
 			break;
 
 		case 'o':
-			out_file = mmsvc_tool_optarg;
+			out_file = muse_tool_optarg;
 			LOGD("out file: %s", out_file);
 			break;
 
 		case 'e':
-			err_file = mmsvc_tool_optarg;
+			err_file = muse_tool_optarg;
 			break;
 
 		case 'l':
-			lock_file = mmsvc_tool_optarg;
+			lock_file = muse_tool_optarg;
 			break;
 
 		default:
@@ -144,17 +144,17 @@ void mmsvc_core_tool_parse_params(int argc, char **argv)
 		}
 	}
 
-	LOGD("mmsvc_tool_optind: %d", mmsvc_tool_optind);
-	argsLeft = argc - mmsvc_tool_optind;
+	LOGD("muse_tool_optind: %d", muse_tool_optind);
+	argsLeft = argc - muse_tool_optind;
 	LOGD("argsLeft : %d", argsLeft);
 
-	mmsvc_cmd = &argv[mmsvc_tool_optind];
-	LOGD("cmd: %s", *mmsvc_cmd);
+	muse_cmd = &argv[muse_tool_optind];
+	LOGD("cmd: %s", *muse_cmd);
 	LOGD("Leave");
 	return;
 }
 
-void mmsvc_core_tool_recursive_rmdir(const char *path)
+void muse_core_tool_recursive_rmdir(const char *path)
 {
 	FTS *fts;
 	FTSENT *ftsent;
