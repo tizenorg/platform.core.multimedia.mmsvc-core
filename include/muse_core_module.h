@@ -1,5 +1,5 @@
 /*
- * mmsvc-core
+ * muse-core
  *
  * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
  *
@@ -18,18 +18,25 @@
  * limitations under the License.
  *
  */
-#ifndef __MMSVC_CORE_TOOL_H__
-#define __MMSVC_CORE_TOOL_H__
+#ifndef __MUSE_CORE_MODULE_H__
+#define __MUSE_CORE_MODULE_H__
 
 #ifdef _cplusplus
 extern "C" {
 #endif
 
-void mmsvc_core_tool_parse_params(int argc, char **argv);
-void mmsvc_core_tool_recursive_rmdir(const char *path);
+#include "muse_core.h"
+#include "muse_core_internal.h"
+
+typedef gboolean (*MUSE_MODULE_DispatchFunc) (muse_module_h module);
+typedef gboolean (*MUSE_MODULE_CMD_DispatchFunc) (muse_module_h module);
+
+GModule * muse_core_module_load(int disp_api);
+void muse_core_module_dll_symbol_dispatch(int cmd, muse_module_h module);
+gboolean muse_core_module_close(muse_module_h module);
 
 #ifdef _cplusplus
 }
 #endif
 
-#endif	/*__MMSVC_CORE_TOOL_H__*/
+#endif	/*__MUSE_CORE_MODULE_H__*/
