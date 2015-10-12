@@ -27,6 +27,7 @@
 #include "muse_core_log.h"
 #include "muse_core_module.h"
 #include "muse_core_workqueue.h"
+#include "muse_core_security.h"
 
 #define MUSE_LOG_SLEEP_TIMER 10
 
@@ -175,6 +176,7 @@ static int _muse_core_free(muse_core_t *server)
 	muse_core_workqueue_get_instance()->shutdown();
 	muse_core_config_get_instance()->free();
 	muse_core_ipc_get_instance()->deinit();
+	muse_core_security_get_instance()->free();
 	LOGD("Leave");
 	return retval;
 }

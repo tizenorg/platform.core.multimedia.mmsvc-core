@@ -24,6 +24,7 @@
 #include "muse_core_config.h"
 #include "muse_core_ipc.h"
 #include "muse_core_log.h"
+#include "muse_core_security.h"
 #include "muse_core_tool.h"
 #include <gst/gst.h>
 
@@ -89,10 +90,16 @@ int main(int argc, char **argv)
 	muse_core_config_init();
 	muse_core_log_init();
 	muse_core_ipc_init();
+	muse_core_security_init();
 	_muse_core_server_gst_init(argv);
 
 	if (argc > 1 && argv)
 		muse_core_tool_parse_params(argc, argv);
+
+	if (muse_core_security_get_instance()->new() < 0) {
+		LOGE("Error - muse_core_security new functoion");
+		exit(0);
+	}
 
 	/* daemon_init */
 	if (getpid() == 1) {
