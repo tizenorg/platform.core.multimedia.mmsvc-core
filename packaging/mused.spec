@@ -17,6 +17,9 @@ BuildRequires:  pkgconfig(json-c)
 BuildRequires:  pkgconfig(gstreamer-1.0)
 BuildRequires:  pkgconfig(gstreamer-base-1.0)
 BuildRequires:  pkgconfig(libtbm)
+BuildRequires: pkgconfig(cynara-client)
+BuildRequires: pkgconfig(cynara-creds-socket)
+BuildRequires: pkgconfig(cynara-session)
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
