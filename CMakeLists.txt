@@ -27,7 +27,7 @@ SET(INC_DIR include)
 INCLUDE_DIRECTORIES(${INC_DIR})
 
 SET(dependents "dlog mm-common json-c glib-2.0 capi-base-common gmodule-2.0 iniparser gstreamer-1.0 libtbm cynara-client cynara-creds-socket cynara-session")
-SET(pc_dependents "dlog mm-common capi-base-common libtbm cynara-client cynara-creds-socket cynara-session")
+SET(pc_dependents "dlog mm-common capi-base-common libtbm")
 
 INCLUDE(FindPkgConfig)
 pkg_check_modules(${fw_name} REQUIRED ${dependents})

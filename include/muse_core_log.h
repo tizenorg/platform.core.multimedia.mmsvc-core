@@ -21,7 +21,7 @@
 #ifndef __MUSE_CORE_LOG_H__
 #define __MUSE_CORE_LOG_H__
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -52,7 +52,7 @@ typedef struct muse_core_log {
 muse_core_log_t *muse_core_log_get_instance(void);
 void muse_core_log_init(void);
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
 

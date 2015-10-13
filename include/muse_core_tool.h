@@ -21,14 +21,14 @@
 #ifndef __MUSE_CORE_TOOL_H__
 #define __MUSE_CORE_TOOL_H__
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 void muse_core_tool_parse_params(int argc, char **argv);
 void muse_core_tool_recursive_rmdir(const char *path);
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
 

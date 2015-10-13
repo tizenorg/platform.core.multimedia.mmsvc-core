@@ -22,7 +22,7 @@
 #ifndef __MUSE_CORE_CONFIG_H__
 #define __MUSE_CORE_CONFIG_H__
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 

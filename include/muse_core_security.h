@@ -27,21 +27,18 @@ extern "C" {
 #endif
 
 #include "muse_core_internal.h"
-#include <cynara-client.h>
-#include <cynara-session.h>
-#include <cynara-creds-socket.h>
 
 #define CYNARA_CACHE_SIZE 1000U
 
 typedef struct muse_core_security {
-	cynara *p_cynara;
+	void *p_cynara;
 	int (*new)(void);
 	void (*free)(void);
 } muse_core_security_t;
 
 muse_core_security_t *muse_core_security_get_instance(void);
 void muse_core_security_init(void);
-int muse_core_security_check_cynara(int fd, const char *privilege);
+bool muse_core_security_check_cynara(int fd, const char *privilege);
 
 #ifdef __cplusplus
 }

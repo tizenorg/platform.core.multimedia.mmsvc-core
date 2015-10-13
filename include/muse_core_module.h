@@ -21,7 +21,7 @@
 #ifndef __MUSE_CORE_MODULE_H__
 #define __MUSE_CORE_MODULE_H__
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -35,7 +35,7 @@ GModule * muse_core_module_load(int disp_api);
 void muse_core_module_dll_symbol_dispatch(int cmd, muse_module_h module);
 gboolean muse_core_module_close(muse_module_h module);
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
 

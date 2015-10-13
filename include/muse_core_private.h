@@ -26,7 +26,7 @@
 #include <glib.h>
 #include <gmodule.h>
 
-#ifdef  _cplusplus
+#ifdef  __cplusplus
 extern "C" {
 #endif
 

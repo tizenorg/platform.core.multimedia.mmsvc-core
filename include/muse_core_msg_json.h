@@ -22,7 +22,7 @@
 #ifndef __MUSE_CORE_MSG_JSON_H__
 #define __MUSE_CORE_MSG_JSON_H__
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -63,7 +63,7 @@ gboolean muse_core_msg_json_deserialize(
 		const char *key, char* buf, int *parse_len, void *data,
 		muse_core_msg_parse_err_e *err, muse_core_type_e m_type);
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
 

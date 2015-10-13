@@ -30,7 +30,6 @@
 
 static void _muse_core_server_setup_syslog(void);
 static void _muse_core_server_gst_init(char **cmd);
-extern int muse_core_run();
 
 static void _muse_core_server_setup_syslog(void)
 {

@@ -21,7 +21,7 @@
 #ifndef __MUSE_CORE_IPC_H__
 #define __MUSE_CORE_IPC_H__
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 

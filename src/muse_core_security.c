@@ -20,12 +20,15 @@
  */
 
 #include "muse_core_security.h"
+#include <cynara-client.h>
+#include <cynara-session.h>
+#include <cynara-creds-socket.h>
 
 static muse_core_security_t *g_muse_core_security = NULL;
 static void _muse_core_security_cynara_log_error(const char *function, int errorCode);
 static int _muse_core_security_cynara_new(void);
 static void _muse_core_security_cynara_free(void);
-static int _muse_core_security_cynara_check(int fd, const char *privilege);
+static bool _muse_core_security_cynara_check(int fd, const char *privilege);
 static void _muse_core_security_init_instance(int (*new)(void), void (*free)(void));
 
 static void _muse_core_security_cynara_log_error(const char *function, int errorCode)
@@ -57,7 +60,7 @@ static int _muse_core_security_cynara_new(void)
 		goto end;
 	}
 
-	ret = cynara_initialize(&g_muse_core_security->p_cynara, p_conf);
+	ret = cynara_initialize((cynara **)&g_muse_core_security->p_cynara, p_conf);
 	if (ret != CYNARA_API_SUCCESS) {
 		_muse_core_security_cynara_log_error("cynara_initialize", ret);
 		goto end;
@@ -73,12 +76,12 @@ end:
 static void _muse_core_security_cynara_free(void)
 {
 	if (g_muse_core_security->p_cynara) {
-		cynara_finish(g_muse_core_security->p_cynara);
+		cynara_finish((cynara *)g_muse_core_security->p_cynara);
 		g_muse_core_security->p_cynara = NULL;
 	}
 }
 
-static int _muse_core_security_cynara_check(int fd, const char *privilege)
+static bool _muse_core_security_cynara_check(int fd, const char *privilege)
 {
 	int ret = 0;
 	pid_t pid = 0;
@@ -111,7 +114,7 @@ static int _muse_core_security_cynara_check(int fd, const char *privilege)
 		goto CLEANUP;
 	}
 
-	ret = cynara_check(g_muse_core_security->p_cynara, client, session, user, privilege);
+	ret = cynara_check((cynara *)g_muse_core_security->p_cynara, client, session, user, privilege);
 	switch (ret) {
 	case CYNARA_API_ACCESS_ALLOWED:
 		LOGD("[CYNARA] Check (client = %s, session = %s, user = %s, privilege = %s )"
@@ -132,7 +135,11 @@ CLEANUP:
 		MUSE_FREE(session);
 	if (client)
 		MUSE_FREE(client);
-	return ret;
+
+	if (ret == CYNARA_API_ACCESS_ALLOWED)
+		return true;
+	else
+		return false;
 }
 
 static void _muse_core_security_init_instance(int (*new)(void), void (*free)(void))
@@ -165,7 +172,7 @@ void muse_core_security_init(void)
 	LOGD("Leave");
 }
 
-int muse_core_security_check_cynara(int fd, const char *privilege)
+bool muse_core_security_check_cynara(int fd, const char *privilege)
 {
 	return _muse_core_security_cynara_check(fd, privilege);
 }
