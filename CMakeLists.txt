@@ -13,6 +13,7 @@ SET(SRCS
        src/muse_core_msg_json.c
        src/muse_core_security.c
        src/muse_core_tool.c
+       src/muse_core_vconf.c
        src/muse_core_workqueue.c
        )
 SET(SRC-SERVER
@@ -26,7 +27,7 @@ SET(BINDIR "${PREFIX}/bin")
 SET(INC_DIR include)
 INCLUDE_DIRECTORIES(${INC_DIR})
 
-SET(dependents "dlog mm-common json-c glib-2.0 capi-base-common gmodule-2.0 iniparser gstreamer-1.0 libtbm cynara-client cynara-creds-socket cynara-session")
+SET(dependents "dlog mm-common json-c glib-2.0 capi-base-common gmodule-2.0 iniparser gstreamer-1.0 libtbm cynara-client cynara-creds-socket cynara-session vconf")
 SET(pc_dependents "dlog mm-common capi-base-common libtbm")
 
 INCLUDE(FindPkgConfig)

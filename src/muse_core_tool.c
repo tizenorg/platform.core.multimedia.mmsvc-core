@@ -114,7 +114,6 @@ void muse_core_tool_parse_params(int argc, char **argv)
 			break;
 
 		case 'p':
-
 			pid_file = muse_tool_optarg;
 			break;
 

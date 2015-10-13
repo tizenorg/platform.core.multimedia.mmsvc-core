@@ -20,7 +20,9 @@ BuildRequires:  pkgconfig(libtbm)
 BuildRequires: pkgconfig(cynara-client)
 BuildRequires: pkgconfig(cynara-creds-socket)
 BuildRequires: pkgconfig(cynara-session)
+BuildRequires: pkgconfig(vconf)
 
+Requires(post): /usr/bin/vconftool
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 
@@ -73,6 +75,9 @@ install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/muse-server.socket
 %post
 /sbin/ldconfig
 
+vconftool set -t int memory/camera/state 0 -i -u 5000 -s system::vconf_multimedia
+vconftool set -t int memory/camera/flash_state 0 -i -u 5000 -s system::vconf_multimedia
+vconftool set -t int memory/recorder/state 0 -i -u 5000 -s system::vconf_multimedia
 %postun -p /sbin/ldconfig
 
 
