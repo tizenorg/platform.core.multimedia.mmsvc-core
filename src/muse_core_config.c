@@ -30,8 +30,8 @@ static char *_muse_core_config_get_path(int api_client);
 static int _muse_core_config_get_gst_param_cnt(void);
 static char *_muse_core_config_get_hosts(void);
 static char *_muse_core_config_get_gst_param_str(int idx);
-static void _muse_core_config_init_instance(void (*free)(void), char* (*get_path)(int), int (*get_gst_param_cnt)(void),
-	char* (*get_gst_param_str)(int), char* (*get_hosts)(void));
+static void _muse_core_config_init_instance(void (*free)(void), char* (*get_path)(int), char* (*get_preloaded)(int), int (*get_gst_param_cnt)(void),
+	char* (*get_gst_param_str)(int), char* (*get_hosts)(void), int (*get_host_cnt)(void));
 
 static int _muse_core_config_parser(void)
 {
@@ -121,6 +121,20 @@ static int _muse_core_config_parser(void)
 
 		LOGD("[%d] %s", g_muse_core_conf->type, g_muse_core_conf->host_infos[g_muse_core_conf->type]->path);
 
+		/* path */
+		strcpy(host_name, host);
+		strcat(host_name, COLON);
+		strcat(host_name, PRELOADED);
+		g_strstrip(host_name); /*Removes leading and trailing whitespace from a string*/
+
+		g_muse_core_conf->host_infos[g_muse_core_conf->type]->preloaded= strdup(iniparser_getstring(g_muse_core_conf->muse_dict, host_name, NULL));
+		if(!g_muse_core_conf->host_infos[g_muse_core_conf->type]->preloaded) {
+			LOGE("Error - null preloaded");
+			_muse_core_config_free();
+			MUSE_FREE(host_name);
+			return ret;
+		}
+
 		host = strtok(NULL, COMMA);
 		g_muse_core_conf->type++;
 		MUSE_FREE(host_name);
@@ -145,6 +159,7 @@ static void _muse_core_config_free(void)
 	while (host != NULL) {
 		LOGD("host: %s", host);
 		MUSE_FREE(g_muse_core_conf->host_infos[g_muse_core_conf->type]->path);
+		MUSE_FREE(g_muse_core_conf->host_infos[g_muse_core_conf->type]->preloaded);
 		MUSE_FREE(g_muse_core_conf->host_infos[g_muse_core_conf->type]);
 		host = strtok(NULL, COMMA);
 		g_muse_core_conf->type++;
@@ -158,7 +173,8 @@ static void _muse_core_config_free(void)
 	MUSE_FREE(g_muse_core_conf);
 }
 
-static void _muse_core_config_init_instance(void (*free)(void), char* (*get_path)(int), int (*get_gst_param_cnt)(void), char* (*get_gst_param_str)(int), char* (*get_hosts)(void))
+static void _muse_core_config_init_instance(void (*free)(void), char* (*get_path)(int), char* (*get_preloaded)(int), int (*get_gst_param_cnt)(void),
+	char* (*get_gst_param_str)(int), char* (*get_hosts)(void), int (*get_host_cnt)(void))
 {
 	g_return_if_fail(free != NULL);
 	g_return_if_fail(get_path != NULL);
@@ -172,9 +188,11 @@ static void _muse_core_config_init_instance(void (*free)(void), char* (*get_path
 	g_muse_core_conf->muse_dict = NULL;
 	g_muse_core_conf->free = free;
 	g_muse_core_conf->get_path = get_path;
-	g_muse_core_conf->get_gst_param_cnt= get_gst_param_cnt;
+	g_muse_core_conf->get_preloaded = get_preloaded;
+	g_muse_core_conf->get_gst_param_cnt = get_gst_param_cnt;
 	g_muse_core_conf->get_gst_param_str = get_gst_param_str;
 	g_muse_core_conf->get_hosts = get_hosts;
+	g_muse_core_conf->get_host_cnt = get_host_cnt;
 	LOGD("conf: %0x2x", g_muse_core_conf);
 
 	if (_muse_core_config_parser() != MM_ERROR_NONE)
@@ -185,6 +203,12 @@ static char *_muse_core_config_get_hosts(void)
 {
 	g_return_val_if_fail(g_muse_core_conf->hosts != NULL, NULL);
 	return g_muse_core_conf->hosts;
+}
+
+static int _muse_core_config_get_host_cnt(void)
+{
+	g_return_val_if_fail(g_muse_core_conf != NULL, 0);
+	return g_muse_core_conf->type;
 }
 
 static int _muse_core_config_get_gst_param_cnt(void)
@@ -207,11 +231,19 @@ static char *_muse_core_config_get_path(int api_client)
 	return g_muse_core_conf->host_infos[api_client]->path;
 }
 
+static char *_muse_core_config_get_preloaded(int api_client)
+{
+	g_return_val_if_fail(g_muse_core_conf->host_infos[api_client]->preloaded!= NULL, NULL);
+
+	LOGD("%s", g_muse_core_conf->host_infos[api_client]->preloaded);
+	return g_muse_core_conf->host_infos[api_client]->preloaded;
+}
+
 muse_core_config_t *muse_core_config_get_instance(void)
 {
 	if (g_muse_core_conf == NULL)
-		_muse_core_config_init_instance(_muse_core_config_free, _muse_core_config_get_path, _muse_core_config_get_gst_param_cnt,
-		_muse_core_config_get_gst_param_str, _muse_core_config_get_hosts);
+		_muse_core_config_init_instance(_muse_core_config_free, _muse_core_config_get_path, _muse_core_config_get_preloaded, _muse_core_config_get_gst_param_cnt,
+		_muse_core_config_get_gst_param_str, _muse_core_config_get_hosts, _muse_core_config_get_host_cnt);
 
 	return g_muse_core_conf;
 }
@@ -220,7 +252,7 @@ void muse_core_config_init(void)
 {
 	LOGD("Enter");
 	if (g_muse_core_conf == NULL)
-		_muse_core_config_init_instance(_muse_core_config_free, _muse_core_config_get_path, _muse_core_config_get_gst_param_cnt,
-		_muse_core_config_get_gst_param_str, _muse_core_config_get_hosts);
+		_muse_core_config_init_instance(_muse_core_config_free, _muse_core_config_get_path, _muse_core_config_get_preloaded, _muse_core_config_get_gst_param_cnt,
+		_muse_core_config_get_gst_param_str, _muse_core_config_get_hosts, _muse_core_config_get_host_cnt);
 	LOGD("Leave");
 }

@@ -38,10 +38,12 @@ extern "C" {
 #define COLON ":"
 #define COMMA ","
 #define PATH "path"
+#define PRELOADED "preloaded"
 
 typedef struct host_info
 {
 	char *path;
+	char *preloaded;
 } host_info_t;
 
 typedef struct muse_core_config
@@ -55,9 +57,11 @@ typedef struct muse_core_config
 	dictionary *muse_dict;
 	void (*free)(void);
 	char* (*get_path)(int);
+	char* (*get_preloaded)(int);
 	int (*get_gst_param_cnt)(void);
 	char* (*get_gst_param_str)(int);
 	char* (*get_hosts)(void);
+	int (*get_host_cnt)(void);
 } muse_core_config_t;
 
 /*muse_core_config_init must be called before muse_core_config_get_instance*/

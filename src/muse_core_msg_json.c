@@ -20,7 +20,6 @@
  */
 
 #include <json.h>
-#include <json_tokener.h>
 #include "muse_core_msg_json.h"
 #include "muse_core_log.h"
 #include "muse_core_internal.h"
@@ -228,6 +227,9 @@ gboolean muse_core_msg_json_deserialize(
 		len = json_object_array_length(val);
 		for (i = 0; i < len; i++)
 			int_data[i] = json_object_get_int(json_object_array_get_idx(val, i));
+		break;
+	default:
+		LOGW("type is not yet implemented");
 		break;
 	}
 	json_object_put(jobj);
