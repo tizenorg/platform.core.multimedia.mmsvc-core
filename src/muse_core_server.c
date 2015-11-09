@@ -24,6 +24,7 @@
 #include "muse_core_config.h"
 #include "muse_core_ipc.h"
 #include "muse_core_log.h"
+#include "muse_core_module.h"
 #include "muse_core_security.h"
 #include "muse_core_tool.h"
 #include <gst/gst.h>
@@ -84,6 +85,7 @@ int main(int argc, char **argv)
 {
 	int result;
 	pid_t pid, sid;
+	int index;
 
 	_muse_core_server_setup_syslog();
 	muse_core_config_init();
@@ -94,6 +96,11 @@ int main(int argc, char **argv)
 
 	if (argc > 1 && argv)
 		muse_core_tool_parse_params(argc, argv);
+
+	for (index = 0; index < muse_core_config_get_instance()->get_host_cnt(); index++) {
+		if (0 == strcmp(muse_core_config_get_instance()->get_preloaded(index), "yes")) {
+			muse_core_module_load(index);
+	}
 
 	if (muse_core_security_get_instance()->new() < 0) {
 		LOGE("Error - muse_core_security new functoion");

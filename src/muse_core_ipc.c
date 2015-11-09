@@ -56,7 +56,10 @@ static void _muse_core_ipc_client_cleanup(muse_module_h module)
 	g_queue_free(module->ch[MUSE_CHANNEL_DATA].queue);
 	module->ch[MUSE_CHANNEL_DATA].queue = NULL;
 	g_cond_broadcast(&module->ch[MUSE_CHANNEL_DATA].cond);
-	g_thread_join(module->ch[MUSE_CHANNEL_DATA].p_gthread);
+	if (module->ch[MUSE_CHANNEL_DATA].p_gthread) {
+		g_thread_join(module->ch[MUSE_CHANNEL_DATA].p_gthread);
+		module->ch[MUSE_CHANNEL_DATA].p_gthread = NULL;
+	}
 	g_mutex_clear(&module->ch[MUSE_CHANNEL_DATA].mutex);
 	g_cond_clear(&module->ch[MUSE_CHANNEL_DATA].cond);
 	LOGD("worker exit");
