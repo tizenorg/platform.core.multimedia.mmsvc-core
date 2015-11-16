@@ -211,6 +211,9 @@ gboolean muse_core_msg_json_deserialize(
 			else
 				*(intptr_t *)data = json_object_get_int(val);
 			LOGD("json_type_int (%s)          value: %p", key, *(intptr_t *)data);
+		} else if (m_type == MUSE_TYPE_DOUBLE) {
+			*(double *)data = json_object_get_double(val);
+			LOGD("json_type_double (%s)          value: %.20lf", key, *(double *)data);
 		}
 		break;
 	case json_type_object:
