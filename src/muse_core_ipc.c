@@ -213,7 +213,7 @@ static muse_recv_data_t *_muse_core_ipc_new_qdata(char **recvBuff, int recvSize,
 {
 	int qDataSize;
 	muse_recv_data_t *qData = (muse_recv_data_t *)*recvBuff;
-	g_return_if_fail(recvBuff);
+	g_return_val_if_fail(recvBuff, NULL);
 
 	if (qData->header.marker != MUSE_DATA_HEAD) {
 		LOGE("Invalid data header");
@@ -236,7 +236,7 @@ static muse_recv_data_t *_muse_core_ipc_new_qdata(char **recvBuff, int recvSize,
 static bool _muse_core_ipc_init_bufmgr(void)
 {
 	LOGD("Enter");
-	g_return_if_fail(g_muse_core_ipc != NULL);
+	g_return_val_if_fail(g_muse_core_ipc != NULL, FALSE);
 
 	g_muse_core_ipc->bufmgr = tbm_bufmgr_init(-1);
 	if(g_muse_core_ipc->bufmgr == NULL) {

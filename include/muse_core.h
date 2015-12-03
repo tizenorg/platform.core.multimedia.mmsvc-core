@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 #define MUSE_URI_MAX_LENGTH 4096
-#define MUSE_MSG_MAX_LENGTH 1024*1024
+#define MUSE_MSG_MAX_LENGTH 4096
 
 typedef struct muse_module * muse_module_h;
 
