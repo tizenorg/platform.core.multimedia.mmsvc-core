@@ -51,7 +51,7 @@ static int _muse_core_tool_getopt(int argc, char **argv, const char *opts)
 	if (si == 1) {
 		if (muse_tool_optind >= argc ||argv[muse_tool_optind][0] != '-' || argv[muse_tool_optind][1] == '\0') {
 			return(EOF);
-		} else if (strcmp(argv[muse_tool_optind], "--") == 0) {
+		} else if (strncmp(argv[muse_tool_optind], "--", 2) == 0) {
 			muse_tool_optind++;
 			return(EOF);
 		}

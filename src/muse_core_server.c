@@ -52,16 +52,18 @@ static void _muse_core_server_gst_init(char **cmd)
 	int gst_param_cnt;
 
 	gst_param_cnt = muse_core_config_get_instance()->get_gst_param_cnt();
-	argc = malloc(sizeof(gint*));
+	argc = malloc(sizeof(gint));
 	g_return_val_if_fail(argc != NULL, NULL);
 
 	/* add gst_param */
 	argv = malloc(sizeof(gchar*) * (gst_param_cnt + 1));
-	g_return_val_if_fail(argv != NULL, NULL);
+	g_return_if_fail(argv != NULL);
 	memset(argv, 0, sizeof(gchar*) * (gst_param_cnt + 1));
 
-	argv[0] = g_strdup(cmd[0]);
-	for (*argc = 1; (*argc) <= gst_param_cnt; (*argc)++)
+	*argc = 0;
+	argv[*argc] = (gchar *)g_strdup(cmd[0]);
+	(*argc)++;
+	for (; (*argc) <= gst_param_cnt; (*argc)++)
 		argv[*argc] = g_strdup(muse_core_config_get_instance()->get_gst_param_str((*argc) - 1));
 
 	/* initializing gstreamer */
