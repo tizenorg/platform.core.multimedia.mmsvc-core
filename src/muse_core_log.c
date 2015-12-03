@@ -146,14 +146,15 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 	trace[1] = (void *) uctxt->uc_mcontext.gregs[REG_RIP];
 	#endif
 	strings = backtrace_symbols(trace, tracesize);
-	if (strings == NULL)
+	if (strings == NULL) {
 		LOGE("backtrace_symbols error: %s", strerror(errno));
-
-	/* skip the first stack frame because it just points here. */
-	for (i = 1; i < tracesize; ++i) {
-		LOGE("[%u] %s", i - 1, strings[i]);
-		if (g_muse_core_log)
-			g_muse_core_log->fatal(strings[i]);
+	} else {
+		/* skip the first stack frame because it just points here. */
+		for (i = 1; i < tracesize; ++i) {
+			LOGE("[%u] %s", i - 1, strings[i]);
+			if (g_muse_core_log)
+				g_muse_core_log->fatal(strings[i]);
+		}
 	}
 
 	LOGE("----------END MUSE DYING MESSAGE----------");
@@ -213,8 +214,6 @@ static size_t _muse_core_log_safewrite(const void *buf, size_t count)
 
 		if (rByte < 0 && errno == EINTR)
 			continue;
-		if (rByte < 0)
-			return rByte;
 		if (rByte == 0)
 			return nWritten;
 		buf = (const char *)buf + rByte;
@@ -322,7 +321,7 @@ static void _muse_core_log_set_msg(char *msg)
 
 static char *_muse_core_log_get_msg(void)
 {
-	g_return_if_fail(g_muse_core_log != NULL);
+	g_return_val_if_fail(g_muse_core_log != NULL, NULL);
 	g_return_val_if_fail(g_muse_core_log->buf != NULL, NULL);
 
 	return g_muse_core_log->buf;

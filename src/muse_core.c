@@ -97,6 +97,7 @@ static int _muse_core_check_server_is_running(void)
 
 	if (flock(fd, LOCK_EX | LOCK_NB) != 0) {
 		LOGE("Can't lock the lock file \"%s\". " "Is another instance running?", LOCKFILE);
+		close(fd);
 		return ret;
 	}
 
@@ -285,8 +286,7 @@ static gboolean _muse_core_connection_handler(GIOChannel *source,
 	LOGD("Leave");
 	return TRUE;
 out:
-	if (client_sockfd)
-		close(client_sockfd);
+	close(client_sockfd);
 
 	MUSE_FREE(module);
 	MUSE_FREE(job);
