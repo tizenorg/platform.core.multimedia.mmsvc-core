@@ -35,7 +35,7 @@ FOREACH(flag ${${fw_name}_CFLAGS})
     SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
-SET(CMAKE_C_FLAGS "-I./include ${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -fPIC -Wall -Werror")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -Wall -fPIE")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 
 IF("${ARCH}" STREQUAL "arm")
@@ -45,7 +45,7 @@ ENDIF("${ARCH}" STREQUAL "arm")
 ADD_DEFINITIONS("-DPREFIX=\"${CMAKE_INSTALL_PREFIX}\"")
 ADD_DEFINITIONS("-DTIZEN_DEBUG")
 
-SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--rpath=/usr/lib")
+SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -pie")
 
 aux_source_directory(src SOURCES)
 ADD_LIBRARY(${fw_name} SHARED ${SRCS})
