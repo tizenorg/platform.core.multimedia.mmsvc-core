@@ -28,12 +28,14 @@ extern "C" {
 #include <time.h>
 #include <gmodule.h>
 #include "muse_core_msg_json.h"
+#define WRITE_DEFAULT_BLOCK_SIZE 4096
 
 typedef struct muse_core_log {
 	int type;
 	unsigned refs;
 	char *buf;
-	size_t len;
+	size_t size;
+	char cache[WRITE_DEFAULT_BLOCK_SIZE];
 	int log_fd;
 	int count;
 	GTimer *timer;

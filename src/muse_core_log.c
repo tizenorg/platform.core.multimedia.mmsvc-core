@@ -30,11 +30,10 @@
 #include <ucontext.h>
 #include <sys/ioctl.h>
 #include <linux/fs.h>
-
 #define TUNABLE_CALLER_DEPTH 32
 #define U32BITS 0xffffffff
-#define READ_DEFAULT_BLOCK_SIZE 1024 * 1024
-#define WRITE_DEFAULT_BLOCK_SIZE 4096
+#define MAX_FILE_NUM 3
+#define MAX_SIZE 33554432
 
 static muse_core_log_t *g_muse_core_log = NULL;
 
@@ -45,6 +44,7 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg);
 static void _muse_core_log_set_log_fd(void);
 static void _muse_core_log_init_instance(void (*log)(char *), void (*fatal)(char *), void (*set_module_value) (int, GModule *, gboolean),
 	gboolean(*get_module_opened) (int), GModule * (*get_module_value) (int), void (*set_msg) (char *), char * (*get_msg) (void));
+static void _muse_core_log_write_buffer(const void *buf, size_t len);
 static void _muse_core_log_monitor(char *msg);
 static void _muse_core_log_fatal(char *msg);
 static void _muse_core_log_set_module_value(int index, GModule *module, gboolean value);
@@ -162,15 +162,58 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 	_muse_core_log_sig_abort(signo);
 }
 
+static int _muse_core_log_open_work(const char *path)
+{
+	return open(path, O_CREAT | O_APPEND | O_WRONLY | O_NONBLOCK, 0666);
+}
+
+static void _muse_core_log_create_fd(void)
+{
+	int selected_index, index;
+	struct stat st;
+	char file[MAX_FILE_NUM][WRITE_DEFAULT_BLOCK_SIZE];
+
+	for (index = 0; index < MAX_FILE_NUM; index++)
+		snprintf(file[index], strlen(LOGFILE) + 3, "%s.%d", LOGFILE, index);
+
+	for (index = 0; index < MAX_FILE_NUM; index++) {
+		if (access(file[index], F_OK ) == 0) { /* if 0, then there is file */
+			stat(file[index], &st);
+			g_muse_core_log->size = st.st_size;
+			if (g_muse_core_log->size > MAX_SIZE) {
+				if (index == MAX_FILE_NUM - 1) {
+					unlink(file[0]);
+					selected_index = 0;
+				} else {
+					selected_index = index + 1;
+				}
+				break;
+			} else {
+				selected_index = index;
+				break;
+			}
+		} else {
+			selected_index = index;
+			break;
+		}
+	}
+
+	LOGD("filename: %s", file[selected_index]);
+	/* open log file again */
+	g_muse_core_log->log_fd = _muse_core_log_open_work(file[selected_index]);
+	if (g_muse_core_log->log_fd < 0) {
+		LOGE("couldn't open log file");
+		exit(EXIT_FAILURE);
+	}
+
+	return;
+}
+
 static void _muse_core_log_set_log_fd(void)
 {
 	g_return_if_fail(g_muse_core_log != NULL);
 
-	g_muse_core_log->log_fd = open(LOGFILE, O_CREAT | O_APPEND | O_WRONLY | O_NONBLOCK, 0666);
-	if (g_muse_core_log->log_fd < 0) {
-		LOGE("error: %s is not a regular file", LOGFILE);
-		return;
-	}
+	_muse_core_log_create_fd();
 
 	if (fcntl(g_muse_core_log->log_fd, F_SETFD, FD_CLOEXEC) < 0)
 		LOGE("unable to set CLO_EXEC on log fd %d: %s", g_muse_core_log->log_fd, strerror(errno));
@@ -190,7 +233,8 @@ static void _muse_core_log_init_instance(void (*log)(char *), void (*fatal)(char
 	g_muse_core_log = calloc(1, sizeof(*g_muse_core_log));
 	g_return_if_fail(g_muse_core_log != NULL);
 	g_muse_core_log->buf = NULL;
-	g_muse_core_log->len = 0;
+	g_muse_core_log->size = 0;
+	memset(g_muse_core_log->cache, 0, WRITE_DEFAULT_BLOCK_SIZE);
 	g_muse_core_log->log = log;
 	g_muse_core_log->fatal = fatal;
 	g_muse_core_log->set_module_value = set_module_value;
@@ -206,66 +250,13 @@ static void _muse_core_log_init_instance(void (*log)(char *), void (*fatal)(char
 	}
 }
 
-static size_t _muse_core_log_safewrite(const void *buf, size_t count)
+static void
+_muse_core_log_write_buffer(const void *buf, size_t len)
 {
-	size_t nWritten = 0;
-	while (count > 0) {
-		size_t rByte = write(g_muse_core_log->log_fd, buf, count);
-
-		if (rByte < 0 && errno == EINTR)
-			continue;
-		if (rByte == 0)
-			return nWritten;
-		buf = (const char *)buf + rByte;
-		count -= rByte;
-		nWritten += rByte;
-	}
-	return nWritten;
-}
-
-static int _muse_core_log_write_buffer_cache_to_fd(char *msg)
-{
-	int ret = MM_ERROR_NONE;
-	int written = 0;
-	off_t remaining = 0;
-	size_t write_size = 0;
-	size_t bytes_wiped = 0;
-	size_t writebuf_length = 0;
-	struct stat st;
-
-	if (ioctl(g_muse_core_log->log_fd, BLKBSZGET, &writebuf_length) < 0)
-		writebuf_length = 0;
-
-	if ((writebuf_length == 0) && fstat(g_muse_core_log->log_fd, &st) == 0)
-		writebuf_length = st.st_blksize;
-
-	if (writebuf_length < WRITE_DEFAULT_BLOCK_SIZE)
-		writebuf_length = WRITE_DEFAULT_BLOCK_SIZE;
-
-	if ((ret = lseek(g_muse_core_log->log_fd, writebuf_length, SEEK_SET)) < 0) {
-		LOGE("Failed to seek to position");
-		return ret;
-	}
-
-	remaining = WRITE_DEFAULT_BLOCK_SIZE;
-	while (remaining > 0) {
-		write_size = (writebuf_length < remaining) ? writebuf_length : remaining;
-		written = _muse_core_log_safewrite(msg, write_size);
-		if (written < 0) {
-			LOGE("Failed to write %zu bytes to storage volume with path", write_size);
-			return ret;
-		}
-		bytes_wiped += written;
-		remaining -= written;
-	}
-
-	if (fdatasync(g_muse_core_log->log_fd) < 0) {
-		ret = -errno;
-		LOGE("cannot sync data to volume with path");
-		return ret;
-	}
-
-	return MM_ERROR_NONE;
+	g_return_if_fail(buf != NULL);
+	memcpy(g_muse_core_log->cache + strlen(g_muse_core_log->cache), buf, len);
+	memcpy(g_muse_core_log->cache + strlen(g_muse_core_log->cache), "\n", 1);
+	LOGD("buffer len: %d", strlen(g_muse_core_log->cache));
 }
 
 static void _muse_core_log_monitor(char *msg)
@@ -281,11 +272,16 @@ static void _muse_core_log_monitor(char *msg)
 		return;
 	}
 
-	_muse_core_log_write_buffer_cache_to_fd(msg);
-	if (_muse_core_log_write_buffer_cache_to_fd(msg) != MM_ERROR_NONE)
-		LOGE("There was an error writing to testfile");
-	else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
-		LOGE("write %s", msg);
+	if (strlen(g_muse_core_log->cache) + strlen(msg) < WRITE_DEFAULT_BLOCK_SIZE) {
+		_muse_core_log_write_buffer(msg, strlen(msg));
+	} else {
+		if (write(g_muse_core_log->log_fd, g_muse_core_log->cache, strlen(g_muse_core_log->cache)) == strlen(g_muse_core_log->cache)) {
+			memset(g_muse_core_log->cache, 0, WRITE_DEFAULT_BLOCK_SIZE);
+			_muse_core_log_write_buffer(msg, strlen(msg));
+		} else {
+			LOGE("There was an error writing to testfile");
+		}
+	}
 
 	if (g_muse_core_log->count != 0)
 		g_timer_stop(g_muse_core_log->timer);
