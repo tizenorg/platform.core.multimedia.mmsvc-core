@@ -67,7 +67,7 @@ static int _muse_core_config_parser(void)
 	for (idx = 0 ; idx < MUSE_MAX_PARAM_NUM; idx++) {
 		char gst_param_value[MUSE_MAX_PARAM_STRLEN];
 		memset(gst_param_value, 0, MUSE_MAX_PARAM_STRLEN);
-		snprintf(gst_param_value, strlen(MUSEGST), "%s%d", MUSEGST, idx+1);
+		snprintf(gst_param_value, strlen(MUSEGST) + ((idx + 1) / 10) + 1, "%s%d", MUSEGST, idx+1);
 
 		str = iniparser_getstring(g_muse_core_conf->muse_dict, gst_param_value, NULL);
 		g_strstrip(str);
@@ -98,7 +98,7 @@ static int _muse_core_config_parser(void)
 		}
 
 		/* path */
-		strncpy(host_name, host, strlen(host));
+		strncpy(host_name, host, strlen(host) + 1);
 		strcat(host_name, COLON);
 		strcat(host_name, PATH);
 		g_strstrip(host_name); /*Removes leading and trailing whitespace from a string*/
@@ -122,7 +122,7 @@ static int _muse_core_config_parser(void)
 		LOGD("[%d] %s", g_muse_core_conf->type, g_muse_core_conf->host_infos[g_muse_core_conf->type]->path);
 
 		/* path */
-		strncpy(host_name, host, strlen(host));
+		strncpy(host_name, host, strlen(host) + 1);
 		strcat(host_name, COLON);
 		strcat(host_name, PRELOADED);
 		g_strstrip(host_name); /*Removes leading and trailing whitespace from a string*/
