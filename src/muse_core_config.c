@@ -67,7 +67,7 @@ static int _muse_core_config_parser(void)
 	for (idx = 0 ; idx < MUSE_MAX_PARAM_NUM; idx++) {
 		char gst_param_value[MUSE_MAX_PARAM_STRLEN];
 		memset(gst_param_value, 0, MUSE_MAX_PARAM_STRLEN);
-		snprintf(gst_param_value, strlen(MUSEGST) + ((idx + 1) / 10) + 1, "%s%d", MUSEGST, idx+1);
+		snprintf(gst_param_value, (idx + 1) / 10 + 15, "%s%d", MUSEGST, idx+1);
 
 		str = iniparser_getstring(g_muse_core_conf->muse_dict, gst_param_value, NULL);
 		g_strstrip(str);
