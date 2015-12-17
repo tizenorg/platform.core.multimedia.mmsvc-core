@@ -53,6 +53,7 @@ static void _muse_core_ipc_client_cleanup(muse_module_h module)
 {
 	g_return_if_fail(module != NULL);
 
+	muse_core_log_get_instance()->flush_msg();
 	g_queue_free(module->ch[MUSE_CHANNEL_DATA].queue);
 	module->ch[MUSE_CHANNEL_DATA].queue = NULL;
 	g_cond_broadcast(&module->ch[MUSE_CHANNEL_DATA].cond);
