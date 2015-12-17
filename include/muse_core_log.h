@@ -25,7 +25,7 @@
 extern "C" {
 #endif
 
-#include <time.h>
+#include <sys/time.h>
 #include <gmodule.h>
 #include "muse_core_msg_json.h"
 #define WRITE_DEFAULT_BLOCK_SIZE 4096
@@ -45,6 +45,7 @@ typedef struct muse_core_log {
 	gboolean (*get_module_opened) (int);
 	void (*set_msg) (char *);
 	char* (*get_msg) (void);
+	void (*flush_msg) (void);
 	GModule* (*get_module_value) (int);
 	gboolean module_opened[MUSE_MODULE_MAX];
 	GModule *module[MUSE_MODULE_MAX];
