@@ -37,6 +37,30 @@ typedef enum {
 	MUSE_MODULE_EVENT_MAX
 } muse_module_event_e;
 
+typedef enum {
+	MUSE_MODULE_STATE_NULL = 0,
+	MUSE_MODULE_STATE_READY,
+	MUSE_MODULE_STATE_PREPARE,
+	MUSE_MODULE_STATE_PREVIEW,
+	MUSE_MODULE_STATE_PLAYING,
+	MUSE_MODULE_STATE_CAPTURING,
+	MUSE_MODULE_STATE_RECORDING,
+	MUSE_MODULE_STATE_PAUSED,
+	MUSE_MODULE_STATE_MAX
+} muse_module_state_e;
+
+typedef enum {
+	MUSE_MODULE_CAM_FLASH_OFF = 0,
+	MUSE_MODULE_CAM_FALSH_ON,
+	MUSE_MODULE_CAM_FALSH_MAX
+} muse_module_cam_flash_state_e;
+
+typedef enum {
+	MUSE_MODULE_CAM_SHUTTER_SOUND_POLICY_ON = 0,
+	MUSE_MODULE_CAM_SHUTTER_SOUND_POLICY_OFF,
+	MUSE_MODULE_CAM_SHUTTER_SOUND_POLICY_MAX
+} muse_module_cam_shutter_sound_policy_e;
+
 int muse_core_run(void);
 void muse_core_cmd_dispatch(muse_module_h module, muse_module_event_e ev);
 void muse_core_connection_close(int sock_fd);
@@ -48,6 +72,12 @@ void muse_core_client_set_cust_data(muse_module_h module, void *data);
 void *muse_core_client_get_cust_data(muse_module_h module);
 char *muse_core_client_get_msg(muse_module_h module);
 int muse_core_client_get_capi(muse_module_h module);
+void muse_core_client_set_state(muse_module_h module, muse_module_state_e module_state);
+int muse_core_client_get_state(muse_module_h module);
+void muse_core_cam_client_set_flash_state(muse_module_h module, muse_module_cam_flash_state_e cam_flash_state);
+int muse_core_cam_client_get_flash_state(muse_module_h module);
+void muse_core_cam_client_set_shutter_sound_policy_value(muse_module_h module, muse_module_cam_shutter_sound_policy_e cam_shutter_sound_policy);
+int muse_core_cam_client_get_shutter_sound_policy_value(muse_module_h module);
 void muse_core_worker_exit(muse_module_h module);
 unsigned muse_core_get_atomic_uint(void);
 

@@ -25,7 +25,7 @@
 #include <stdint.h>
 #include <glib.h>
 #include <gmodule.h>
-
+#include "muse_core_module.h"
 #ifdef  __cplusplus
 extern "C" {
 #endif
@@ -55,7 +55,11 @@ typedef struct muse_module {
 	muse_core_channel_info_t ch[MUSE_CHANNEL_MAX];
 	char recvMsg[MUSE_MSG_MAX_LENGTH];
 	int msg_offset;
+	int api_module;
 	int disp_api;
+	int module_state[MUSE_MODULE_MAX];
+	int flash_state;
+	int shutter_sound_policy;
 	gpointer usr_data;
 	intptr_t handle;
 } muse_module_t;

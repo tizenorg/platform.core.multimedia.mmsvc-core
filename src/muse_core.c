@@ -406,7 +406,7 @@ int muse_core_run()
 
 void muse_core_cmd_dispatch(muse_module_h module, muse_module_event_e ev)
 {
-	MUSE_MODULE_CMD_DispatchFunc *cmd_dispatcher = NULL;
+	muse_module_cmd_dispatchfunc *cmd_dispatcher = NULL;
 
 	g_return_if_fail(module->ch[MUSE_CHANNEL_MSG].dll_handle != NULL);
 
@@ -466,6 +466,42 @@ int muse_core_client_get_capi(muse_module_h module)
 {
 	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
 	return module->disp_api;
+}
+
+void muse_core_client_set_state(muse_module_h module, muse_module_state_e module_state)
+{
+	g_return_if_fail(module);
+	muse_core_module_get_instance()->set_module_state(module, module_state);
+}
+
+int muse_core_client_get_state(muse_module_h module)
+{
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
+	return muse_core_module_get_instance()->get_module_state(module);
+}
+
+void muse_core_cam_client_set_flash_state(muse_module_h module, muse_module_cam_flash_state_e cam_flash_state)
+{
+	g_return_if_fail(module);
+	muse_core_module_get_instance()->set_flash_state(module, cam_flash_state);
+}
+
+int muse_core_cam_client_get_flash_state(muse_module_h module)
+{
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
+	return muse_core_module_get_instance()->get_flash_state(module);
+}
+
+void muse_core_cam_client_set_shutter_sound_policy_value(muse_module_h module, muse_module_cam_shutter_sound_policy_e cam_shutter_sound_policy)
+{
+	g_return_if_fail(module);
+	muse_core_module_get_instance()->set_shutter_sound_policy(module, cam_shutter_sound_policy);
+}
+
+int muse_core_cam_client_get_shutter_sound_policy_value(muse_module_h module)
+{
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
+	return muse_core_module_get_instance()->get_shutter_sound_policy(module);
 }
 
 void muse_core_connection_close(int sock_fd)
