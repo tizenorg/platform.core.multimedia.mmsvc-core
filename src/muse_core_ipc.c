@@ -69,7 +69,7 @@ static void _muse_core_ipc_client_cleanup(muse_module_h module)
 
 static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 {
-	int len, parse_len, cmd, disp_api;
+	int len, parse_len, cmd, api_module;
 	muse_module_h module = NULL;
 	muse_core_msg_parse_err_e err = MUSE_MSG_PARSE_ERROR_NONE;
 	g_return_val_if_fail(data != NULL, NULL);
@@ -88,7 +88,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 			parse_len = len;
 			LOGD("Message In");
 			cmd = 0;
-			disp_api = 0;
+			api_module = 0;
 			module->msg_offset = 0;
 
 			muse_core_log_get_instance()->log(module->recvMsg);
@@ -96,27 +96,26 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 			while (module->msg_offset < len) {
 				if (muse_core_msg_json_deserialize(MUSE_API, module->recvMsg + module->msg_offset, &parse_len, &cmd, &err, MUSE_TYPE_INT)) {
 					switch (cmd) {
+						module->disp_api = cmd;
 					case API_CREATE:
-						if (muse_core_msg_json_deserialize(MUSE_MODULE, module->recvMsg + module->msg_offset, &parse_len, &disp_api, &err, MUSE_TYPE_INT)) {
-							module->disp_api = disp_api;
-							module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_load(disp_api);
+						if (muse_core_msg_json_deserialize(MUSE_MODULE, module->recvMsg + module->msg_offset, &parse_len, &api_module, &err, MUSE_TYPE_INT)) {
+							module->api_module = api_module;
+							module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_get_instance()->load(api_module);
 							module->ch[MUSE_CHANNEL_DATA].queue = g_queue_new();
 							g_mutex_init(&module->ch[MUSE_CHANNEL_DATA].mutex);
 							g_cond_init(&module->ch[MUSE_CHANNEL_DATA].cond);
-							LOGD("module fd: %d dll_handle: %p",
-									module->ch[MUSE_CHANNEL_MSG].fd,
-									module->ch[MUSE_CHANNEL_MSG].dll_handle);
-							muse_core_module_dll_symbol_dispatch(cmd, module);
+							LOGD("module fd: %d dll_handle: %p", module->ch[MUSE_CHANNEL_MSG].fd, module->ch[MUSE_CHANNEL_MSG].dll_handle);
+							muse_core_module_get_instance()->dispatch(cmd, module);
 							break;
 						}
 					case API_DESTROY:
 						LOGD("DESTROY");
-						muse_core_module_dll_symbol_dispatch(cmd, module);
+						muse_core_module_get_instance()->dispatch(cmd, module);
 						_muse_core_ipc_client_cleanup(module);
 						break;
 					default:
 						LOGD("[default] module's dll_handle: %p", module->ch[MUSE_CHANNEL_MSG].dll_handle);
-						muse_core_module_dll_symbol_dispatch(cmd, module);
+						muse_core_module_get_instance()->dispatch(cmd, module);
 						break;
 					}
 				} else {
@@ -282,7 +281,7 @@ int muse_core_ipc_get_client_from_job(muse_core_workqueue_job_t *job)
 	g_return_val_if_fail(module != NULL, MM_ERROR_INVALID_ARGUMENT);
 
 	LOGD("Leave");
-	return module->disp_api;
+	return module->api_module;
 }
 
 gboolean muse_core_ipc_job_function(muse_core_workqueue_job_t *job)
@@ -295,7 +294,7 @@ gboolean muse_core_ipc_job_function(muse_core_workqueue_job_t *job)
 	module = (muse_module_h) job->user_data;
 	g_return_val_if_fail(module != NULL, FALSE);
 
-	LOGD("[%p] client->fd : %d", module, module->ch[MUSE_CHANNEL_MSG].fd);
+	LOGD("[%p] client's fd : %d", module, module->ch[MUSE_CHANNEL_MSG].fd);
 
 	module->ch[MUSE_CHANNEL_MSG].p_gthread = g_thread_new(NULL, _muse_core_ipc_dispatch_worker, (gpointer)module);
 	g_return_val_if_fail(module->ch[MUSE_CHANNEL_MSG].p_gthread != NULL, FALSE);
