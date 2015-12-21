@@ -103,7 +103,7 @@ static void _muse_core_msg_json_factory_args(json_object *jobj, va_list ap)
 			json_object_object_add(jobj, name, json_object_new_int64(va_arg(ap, int64_t)));
 			break;
 		case MUSE_TYPE_POINTER:
-			if(sizeof(intptr_t) == 8)
+			if (sizeof(intptr_t) == 8)
 				json_object_object_add(jobj, name, json_object_new_int64(va_arg(ap, intptr_t)));
 			else
 				json_object_object_add(jobj, name, json_object_new_int(va_arg(ap, intptr_t)));
@@ -197,16 +197,16 @@ gboolean muse_core_msg_json_deserialize(
 		LOGD("json_type_double (%s)          value: %p", key, (double *)data);
 		break;
 	case json_type_int:
-		if(m_type == MUSE_TYPE_ANY || m_type == MUSE_TYPE_INT) {
+		if (m_type == MUSE_TYPE_ANY || m_type == MUSE_TYPE_INT) {
 			*(int32_t *)data = json_object_get_int(val);
 			LOGD("json_type_int (%s)          value: %d (32)", key, *(int32_t *)data);
 		}
-		else if(m_type == MUSE_TYPE_INT64) {
+		else if (m_type == MUSE_TYPE_INT64) {
 			*(int64_t *)data = json_object_get_int64(val);
 			LOGD("json_type_int (%s)          value: %" G_GINT64_FORMAT "(64)", key, *(int64_t *)data);
 		}
-		else if(m_type == MUSE_TYPE_POINTER) {
-			if(sizeof(intptr_t) == 8)
+		else if (m_type == MUSE_TYPE_POINTER) {
+			if (sizeof(intptr_t) == 8)
 				*(intptr_t *)data = json_object_get_int64(val);
 			else
 				*(intptr_t *)data = json_object_get_int(val);

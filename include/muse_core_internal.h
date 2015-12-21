@@ -79,7 +79,7 @@ extern "C" {
 
 #define DISPATCHER "dispatcher"
 #define CMD_DISPATCHER "cmd_dispatcher"
-#define MUSE_FREE(src) { if(src) {g_free(src); src = NULL;} }
+#define MUSE_FREE(src) { if (src) {g_free(src); src = NULL;} }
 
 #ifdef __cplusplus
 }

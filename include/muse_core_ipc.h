@@ -52,7 +52,7 @@ typedef enum {
  * @param[in] fd socket fd
  */
 #define muse_core_send_client_addr(module, fd) \
-	do{	\
+	do {\
 		char *__sndMsg__; \
 		int __len__; \
 		__sndMsg__ = muse_core_msg_json_factory_new(0, \
@@ -64,7 +64,7 @@ typedef enum {
 			LOGE("sending message failed"); \
 			return PLAYER_ERROR_INVALID_OPERATION; \
 		} \
-	}while(0)
+	} while (0)
 
 gboolean muse_core_ipc_job_function(struct muse_core_workqueue_job * job);
 int muse_core_ipc_send_msg(int sock_fd, const char *msg);

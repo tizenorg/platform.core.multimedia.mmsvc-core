@@ -159,7 +159,7 @@ void muse_core_tool_recursive_rmdir(const char *path)
 	FTS *fts;
 	FTSENT *ftsent;
 
-	g_return_if_fail (path != NULL);
+	g_return_if_fail(path != NULL);
 
 	char *const paths[] = { (char *)path, NULL };
 
