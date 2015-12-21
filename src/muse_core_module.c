@@ -25,35 +25,49 @@
 #include "muse_core_module.h"
 #include "muse_core_private.h"
 
-GModule *muse_core_module_load(int disp_api)
+static muse_core_module_t *g_muse_core_module = NULL;
+
+static GModule * _muse_core_module_load(int api_module);
+static void _muse_core_module_dispatch(int cmd, muse_module_h module);
+static gboolean _muse_core_module_close(muse_module_h module);
+static GModule *_muse_core_module_get_dllsymbol(int api_module);
+static void _muse_core_module_set_dllsymbol_loaded_value(int api_module, GModule *module, gboolean value);
+static gboolean _muse_core_module_get_dllsymbol_loaded_value(int api_module);
+static void _muse_core_module_set_dllsymbol_value(muse_module_h module, const char *keyname, int module_state);
+static int _muse_core_module_get_dllsymbol_value(muse_module_h module, const char *keyname);
+static void _muse_core_module_init_instance(GModule* (*load) (int), void (*dispatch) (int, muse_module_h), gboolean (*close) (muse_module_h),
+	GModule * (*get_dllsymbol_value) (int), void (*set_dllsymbol_loaded_value) (int, GModule *, gboolean), gboolean(*get_dllsymbol_loaded_value) (int),
+	void (*set_value) (muse_module_h, const char *, int), int (*get_value) (muse_module_h, const char *));
+
+
+static GModule *_muse_core_module_load(int api_module)
 {
 	GModule *module = NULL;
 
-	if (muse_core_log_get_instance()->get_module_opened(disp_api) == false) {
-		LOGD("dispatch api: %d", disp_api);
-		module = g_module_open(muse_core_config_get_instance()->get_path(disp_api), G_MODULE_BIND_LAZY);
+	if (_muse_core_module_get_dllsymbol_loaded_value(api_module) == false) {
+		module = g_module_open(muse_core_config_get_instance()->get_path(api_module), G_MODULE_BIND_LAZY);
 
 		if (!module) {
 			LOGE("%s", g_module_error());
 			return NULL;
 		} else {
-			muse_core_log_get_instance()->set_module_value(disp_api, module, true);
+			_muse_core_module_set_dllsymbol_loaded_value(api_module, module, true);
 		}
-	} else if (muse_core_log_get_instance()->get_module_opened(disp_api) == true) {
-		module = muse_core_log_get_instance()->get_module_value(disp_api);
+	} else if (_muse_core_module_get_dllsymbol_loaded_value(api_module) == true) {
+		module = _muse_core_module_get_dllsymbol(api_module);
 		LOGW("already module is opened: %p", module);
 	}
 
 	return module;
 }
 
-void muse_core_module_dll_symbol_dispatch(int cmd, muse_module_h module)
+static void _muse_core_module_dispatch(int cmd, muse_module_h module)
 {
-	MUSE_MODULE_DispatchFunc *dispatcher = NULL;
+	muse_module_dispatchfunc *dispatcher = NULL;
 
 	g_return_if_fail(module->ch[MUSE_CHANNEL_MSG].dll_handle != NULL);
 
-	LOGD("cmd: %d\t module->dll_handle: %p", cmd, module->ch[MUSE_CHANNEL_MSG].dll_handle);
+	LOGD("cmd: %d\t module's dll_handle: %p", cmd, module->ch[MUSE_CHANNEL_MSG].dll_handle);
 	g_module_symbol(module->ch[MUSE_CHANNEL_MSG].dll_handle, DISPATCHER, (gpointer *)&dispatcher);
 
 	if (dispatcher && dispatcher[cmd]) {
@@ -65,11 +79,11 @@ void muse_core_module_dll_symbol_dispatch(int cmd, muse_module_h module)
 	}
 }
 
-gboolean muse_core_module_close(muse_module_h module)
+static gboolean _muse_core_module_close(muse_module_h module)
 {
 	g_return_val_if_fail(module != NULL, FALSE);
 
-	muse_core_log_get_instance()->set_module_value(module->disp_api, module->ch[MUSE_CHANNEL_MSG].dll_handle, false);
+	_muse_core_module_set_dllsymbol_loaded_value(module->api_module, module->ch[MUSE_CHANNEL_MSG].dll_handle, false);
 
 	LOGD("Closing module %s", g_module_name(module->ch[MUSE_CHANNEL_MSG].dll_handle));
 	if (!g_module_close(module->ch[MUSE_CHANNEL_MSG].dll_handle)) {
@@ -78,4 +92,86 @@ gboolean muse_core_module_close(muse_module_h module)
 	}
 
 	return TRUE;
+}
+static GModule *_muse_core_module_get_dllsymbol(int api_module)
+{
+	g_return_val_if_fail(g_muse_core_module != NULL, NULL);
+	return g_muse_core_module->module[api_module];
+}
+
+static void _muse_core_module_set_dllsymbol_loaded_value(int api_module, GModule *module, gboolean value)
+{
+	g_return_if_fail(g_muse_core_module!= NULL);
+	g_return_if_fail(module != NULL);
+
+	g_muse_core_module->module_loaded[api_module] = value;
+	g_muse_core_module->module[api_module] = module;
+	LOGD("module: %p", g_muse_core_module->module[api_module]);
+}
+static gboolean _muse_core_module_get_dllsymbol_loaded_value(int api_module)
+{
+	g_return_val_if_fail(g_muse_core_module != NULL, false);
+	return g_muse_core_module->module_loaded[api_module];
+}
+
+static void _muse_core_module_set_dllsymbol_value(muse_module_h module, const char * keyname, int value)
+{
+	g_return_if_fail(g_muse_core_module!= NULL);
+	g_return_if_fail(module != NULL);
+	g_return_if_fail(keyname != NULL);
+	g_return_if_fail(strcmp(keyname, muse_core_config_get_instance()->get_host(module->api_module)));
+	g_hash_table_insert(g_muse_core_module->table, g_strdup(keyname), GINT_TO_POINTER(value));
+}
+
+static int _muse_core_module_get_dllsymbol_value(muse_module_h module, const char * keyname)
+{
+	g_return_val_if_fail(g_muse_core_module!= NULL, MM_ERROR_INVALID_ARGUMENT);
+	return GPOINTER_TO_INT (g_hash_table_lookup(g_muse_core_module->table, keyname));
+}
+
+static void _muse_core_module_init_instance(GModule* (*load) (int), void (*dispatch) (int, muse_module_h), gboolean (*close) (muse_module_h),
+	GModule * (*get_dllsymbol_value) (int), void (*set_dllsymbol_loaded_value) (int, GModule *, gboolean), gboolean(*get_dllsymbol_loaded_value) (int),
+	void (*set_value) (muse_module_h, const char *, int), int (*get_value) (muse_module_h, const char *))
+{
+	g_return_if_fail(g_muse_core_module == NULL);
+
+	int idx = 0;
+	g_muse_core_module = calloc(1, sizeof(*g_muse_core_module));
+	g_return_if_fail(g_muse_core_module != NULL);
+
+	g_muse_core_module->load = load;
+	g_muse_core_module->dispatch= dispatch;
+	g_muse_core_module->close= close;
+	g_muse_core_module->set_dllsymbol_loaded_value = set_dllsymbol_loaded_value;
+	g_muse_core_module->get_dllsymbol_loaded_value = get_dllsymbol_loaded_value;
+	g_muse_core_module->get_dllsymbol_value = get_dllsymbol_value;
+	g_muse_core_module->set_value = set_value;
+	g_muse_core_module->get_value = get_value;
+	g_muse_core_module->table = g_hash_table_new(NULL,NULL);
+	g_return_if_fail(g_muse_core_module->table != NULL);
+
+	for (idx = 0; idx < MUSE_MODULE_MAX; idx++)
+		g_muse_core_module->module_loaded[idx] = false;
+}
+
+muse_core_module_t *muse_core_module_get_instance(void)
+{
+	if (g_muse_core_module == NULL)
+		_muse_core_module_init_instance(_muse_core_module_load, _muse_core_module_dispatch, _muse_core_module_close,
+		_muse_core_module_get_dllsymbol, _muse_core_module_set_dllsymbol_loaded_value, _muse_core_module_get_dllsymbol_loaded_value,
+		_muse_core_module_set_dllsymbol_value, _muse_core_module_get_dllsymbol_value);
+
+	return g_muse_core_module;
+}
+
+void muse_core_module_init(void)
+{
+	LOGD("Enter");
+
+	if (g_muse_core_module == NULL)
+		_muse_core_module_init_instance(_muse_core_module_load, _muse_core_module_dispatch, _muse_core_module_close,
+		_muse_core_module_get_dllsymbol, _muse_core_module_set_dllsymbol_loaded_value, _muse_core_module_get_dllsymbol_loaded_value,
+		_muse_core_module_set_dllsymbol_value, _muse_core_module_get_dllsymbol_value);
+
+	LOGD("Leave");
 }

@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 #include <iniparser.h>
-
+#include "muse_core_module.h"
 #define CONFFILE "/usr/share/mused/mused.conf"
 #define HOST_MAX_COUNT 1024
 #define MUSE_MAX_PARAM_NUM 10
@@ -49,6 +49,7 @@ typedef struct host_info
 typedef struct muse_core_config
 {
 	char *hosts;
+	char *host[MUSE_MODULE_MAX];
 	int type;
 	char *logfile;
 	char *gst_param_str[MUSE_MAX_PARAM_NUM];
@@ -60,7 +61,7 @@ typedef struct muse_core_config
 	char* (*get_preloaded)(int);
 	int (*get_gst_param_cnt)(void);
 	char* (*get_gst_param_str)(int);
-	char* (*get_hosts)(void);
+	char* (*get_host)(int);
 	int (*get_host_cnt)(void);
 } muse_core_config_t;
 
