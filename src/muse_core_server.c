@@ -92,6 +92,7 @@ int main(int argc, char **argv)
 	_muse_core_server_setup_syslog();
 	muse_core_config_init();
 	muse_core_log_init();
+	muse_core_module_init();
 	muse_core_ipc_init();
 	muse_core_security_init();
 	_muse_core_server_gst_init(argv);
@@ -101,7 +102,7 @@ int main(int argc, char **argv)
 
 	for (index = 0; index < muse_core_config_get_instance()->get_host_cnt(); index++) {
 		if (0 == strcmp(muse_core_config_get_instance()->get_preloaded(index), "yes"))
-			muse_core_module_load(index);
+			muse_core_module_get_instance()->load(index);
 	}
 
 	if (muse_core_security_get_instance()->new() < 0) {
@@ -116,10 +117,9 @@ int main(int argc, char **argv)
 	}
 
 	if ((pid = fork()) < 0) {
-		LOGE("Could not fork child.");
+		LOGE("Error: fork() failed: %s", strerror (errno));
 		exit(0);
 	} else if (pid != 0) {
-		LOGD("PID : %d, PID CLOSE!!", pid);
 		exit(0);
 	}
 

@@ -48,6 +48,8 @@ void muse_core_client_set_cust_data(muse_module_h module, void *data);
 void *muse_core_client_get_cust_data(muse_module_h module);
 char *muse_core_client_get_msg(muse_module_h module);
 int muse_core_client_get_capi(muse_module_h module);
+int muse_core_client_set_value(muse_module_h module, const char *value_name, int set_value);
+int muse_core_client_get_value(muse_module_h module, const char *value_name, int *get_value);
 void muse_core_worker_exit(muse_module_h module);
 unsigned muse_core_get_atomic_uint(void);
 

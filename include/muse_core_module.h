@@ -28,13 +28,33 @@ extern "C" {
 #include "muse_core.h"
 #include "muse_core_internal.h"
 
-typedef gboolean (*MUSE_MODULE_DispatchFunc) (muse_module_h module);
-typedef gboolean (*MUSE_MODULE_CMD_DispatchFunc) (muse_module_h module);
+typedef gboolean (*muse_module_dispatchfunc) (muse_module_h module);
+typedef gboolean (*muse_module_cmd_dispatchfunc) (muse_module_h module);
 
-GModule * muse_core_module_load(int disp_api);
-void muse_core_module_dll_symbol_dispatch(int cmd, muse_module_h module);
-gboolean muse_core_module_close(muse_module_h module);
+typedef enum {
+	MUSE_PLAYER,
+	MUSE_CAMERA,
+	MUSE_RECORDER,
+	MUSE_MODULE_MAX
+} muse_core_api_module_e;
 
+typedef struct muse_core_module {
+	GModule* (*load) (int);
+	void (*dispatch) (int, muse_module_h);
+	gboolean (*close) (muse_module_h);
+	void (*set_dllsymbol_loaded_value) (int, GModule *, gboolean);
+	gboolean (*get_dllsymbol_loaded_value) (int);
+	GModule* (*get_dllsymbol_value) (int);
+	void (*set_value) (muse_module_h, const char *, int);
+	int (*get_value) (muse_module_h, const char *, int *);
+	gboolean module_loaded[MUSE_MODULE_MAX];
+	GModule *module[MUSE_MODULE_MAX];
+	GHashTable * table[MUSE_MODULE_MAX];
+	int api_module;
+} muse_core_module_t;
+
+muse_core_module_t *muse_core_module_get_instance(void);
+void muse_core_module_init(void);
 #ifdef __cplusplus
 }
 #endif
