@@ -33,13 +33,6 @@ extern "C" {
 #define MUSE_PARAM_EVENT	 		"event"
 
 typedef enum {
-	MUSE_PLAYER,
-	MUSE_CAMERA,
-	MUSE_RECORDER,
-	MUSE_MODULE_MAX
-} muse_core_api_module_e;
-
-typedef enum {
 	MUSE_TYPE_INT = 1,
 	MUSE_TYPE_INT64,
 	MUSE_TYPE_POINTER,
