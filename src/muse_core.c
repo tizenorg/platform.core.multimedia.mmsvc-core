@@ -176,6 +176,7 @@ static int _muse_core_free(muse_core_t *server)
 	MUSE_FREE(server);
 	muse_core_workqueue_get_instance()->shutdown();
 	muse_core_config_get_instance()->free();
+	muse_core_module_get_instance()->free();
 	muse_core_ipc_get_instance()->deinit();
 	muse_core_security_get_instance()->free();
 	LOGD("Leave");
@@ -235,8 +236,7 @@ int _muse_core_server_new(muse_core_channel_e channel)
 	return fd;
 }
 
-static gboolean _muse_core_connection_handler(GIOChannel *source,
-		GIOCondition condition, gpointer data)
+static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition condition, gpointer data)
 {
 	int client_sockfd, server_sockfd;
 	socklen_t client_len;
@@ -406,7 +406,7 @@ int muse_core_run()
 
 void muse_core_cmd_dispatch(muse_module_h module, muse_module_event_e ev)
 {
-	MUSE_MODULE_CMD_DispatchFunc *cmd_dispatcher = NULL;
+	muse_module_cmd_dispatchfunc *cmd_dispatcher = NULL;
 
 	g_return_if_fail(module->ch[MUSE_CHANNEL_MSG].dll_handle != NULL);
 
@@ -466,6 +466,23 @@ int muse_core_client_get_capi(muse_module_h module)
 {
 	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
 	return module->disp_api;
+}
+
+int muse_core_client_set_value(muse_module_h module, const char *value_name, int set_value)
+{
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
+	g_return_val_if_fail(value_name, MM_ERROR_INVALID_ARGUMENT);
+	muse_core_module_get_instance()->set_value(module, value_name, set_value);
+	return MM_ERROR_NONE;
+}
+
+int muse_core_client_get_value(muse_module_h module, const char *value_name, int *get_value)
+{
+	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
+	g_return_val_if_fail(value_name, MM_ERROR_INVALID_ARGUMENT);
+	g_return_val_if_fail(get_value, MM_ERROR_INVALID_ARGUMENT);
+
+	return muse_core_module_get_instance()->get_value(module, value_name, get_value);
 }
 
 void muse_core_connection_close(int sock_fd)
