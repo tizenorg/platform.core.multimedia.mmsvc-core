@@ -48,6 +48,10 @@ void muse_core_client_set_cust_data(muse_module_h module, void *data);
 void *muse_core_client_get_cust_data(muse_module_h module);
 char *muse_core_client_get_msg(muse_module_h module);
 int muse_core_client_get_capi(muse_module_h module);
+void muse_core_client_set_state(int client, int module_state);
+int muse_core_client_get_state(int client);
+void muse_core_cam_client_set_flash_state(int flash_state);
+int muse_core_cam_client_get_flash_state(void);
 void muse_core_worker_exit(muse_module_h module);
 unsigned muse_core_get_atomic_uint(void);
 
