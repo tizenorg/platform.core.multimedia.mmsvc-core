@@ -101,6 +101,8 @@ static int _muse_core_check_server_is_running(void)
 		return ret;
 	}
 
+	close(fd);
+
 	/* Close out the standard file descriptors */
 	close(STDIN_FILENO);
 	close(STDOUT_FILENO);
