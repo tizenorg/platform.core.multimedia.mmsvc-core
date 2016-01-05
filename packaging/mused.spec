@@ -1,5 +1,5 @@
 Name:       mused
-Summary:    A Media Daemon library in Tizen Native API
+Summary:    A Media Daemon Library in Tizen Native API
 Version:    0.1.2
 Release:    0
 Group:      System/Libraries
