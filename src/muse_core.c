@@ -102,7 +102,6 @@ static int _muse_core_check_server_is_running(void)
 	}
 
 	close(fd);
-
 	/* Close out the standard file descriptors */
 	close(STDIN_FILENO);
 	close(STDOUT_FILENO);
@@ -124,7 +123,6 @@ static bool _muse_core_attach_server(int fd, MUSE_MODULE_Callback callback, gpoi
 		return false;
 
 	g_source_set_callback(src, (GSourceFunc) callback, param, NULL);
-
 	g_source_attach(src, g_main_loop_get_context(g_loop));
 	g_source_unref(src);
 
@@ -150,8 +148,7 @@ static muse_core_t *_muse_core_create_new_server_from_fd(int fd[], int type)
 	g_atomic_int_set(&server->running, 1);
 
 	for (i = 0; i < MUSE_CHANNEL_MAX; i++) {
-		if (!_muse_core_attach_server(fd[i],
-					_muse_core_connection_handler, (gpointer)(intptr_t) i)) {
+		if (!_muse_core_attach_server(fd[i], _muse_core_connection_handler, (gpointer)(intptr_t) i)) {
 			LOGD("Fail to attach server fd %d", fd[i]);
 			MUSE_FREE(server);
 			return NULL;
@@ -259,7 +256,7 @@ static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition c
 
 	if (client_sockfd < 0) {
 		LOGE("failed to accept");
-		goto out;
+		return FALSE;
 	}
 
 	if (channel == MUSE_CHANNEL_MSG) {
@@ -289,7 +286,6 @@ static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition c
 	return TRUE;
 out:
 	close(client_sockfd);
-
 	MUSE_FREE(module);
 	MUSE_FREE(job);
 

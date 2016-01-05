@@ -53,7 +53,7 @@ static void _muse_core_server_gst_init(char **cmd)
 
 	gst_param_cnt = muse_core_config_get_instance()->get_gst_param_cnt();
 	argc = malloc(sizeof(gint));
-	g_return_val_if_fail(argc != NULL, NULL);
+	g_return_if_fail(argc != NULL);
 
 	/* add gst_param */
 	argv = malloc(sizeof(gchar*) * (gst_param_cnt + 1));

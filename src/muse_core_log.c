@@ -161,6 +161,8 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 
 static int _muse_core_log_open_work(const char *path)
 {
+	if (access(path, F_OK) == 0)
+		unlink(path);
 	return open(path, O_CREAT | O_APPEND | O_WRONLY | O_NONBLOCK, 0666);
 }
 
@@ -168,7 +170,7 @@ static void _muse_core_log_create_fd(void)
 {
 	int selected_index, index;
 	struct stat st;
-	char file[MAX_FILE_NUM][WRITE_DEFAULT_BLOCK_SIZE];
+	char file[MAX_FILE_NUM][TUNABLE_CALLER_DEPTH];
 
 	for (index = 0; index < MAX_FILE_NUM; index++)
 		snprintf(file[index], strlen(LOGFILE) + 3, "%s.%d", LOGFILE, index);
@@ -178,12 +180,11 @@ static void _muse_core_log_create_fd(void)
 			stat(file[index], &st);
 			g_muse_core_log->size = st.st_size;
 			if (g_muse_core_log->size > MAX_SIZE) {
-				if (index == MAX_FILE_NUM - 1) {
-					unlink(file[0]);
+				if (index == MAX_FILE_NUM - 1)
 					selected_index = 0;
-				} else {
+				else
 					selected_index = index + 1;
-				}
+
 				break;
 			} else {
 				selected_index = index;
