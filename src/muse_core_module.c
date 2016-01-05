@@ -121,7 +121,7 @@ static void _muse_core_module_set_dllsymbol_value(muse_module_h module, const ch
 	g_return_if_fail(module != NULL);
 	g_return_if_fail(keyname != NULL);
 
-	g_hash_table_insert(g_muse_core_module->table[module->api_module], keyname, GINT_TO_POINTER(value));
+	g_hash_table_insert(g_muse_core_module->table[module->api_module], g_strdup(keyname), GINT_TO_POINTER(value));
 }
 
 static int _muse_core_module_get_dllsymbol_value(muse_module_h module, const char *keyname, int *value)
