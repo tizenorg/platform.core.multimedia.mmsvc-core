@@ -58,9 +58,6 @@ static void _muse_core_ipc_client_cleanup(muse_module_h module)
 	module->ch[MUSE_CHANNEL_DATA].queue = NULL;
 	g_cond_broadcast(&module->ch[MUSE_CHANNEL_DATA].cond);
 
-	for (idx = 0; idx < MUSE_MODULE_MAX; idx++)
-		g_hash_table_destroy(muse_core_module_get_instance()->table[idx]);
-
 	if (module->ch[MUSE_CHANNEL_DATA].p_gthread) {
 		g_thread_join(module->ch[MUSE_CHANNEL_DATA].p_gthread);
 		module->ch[MUSE_CHANNEL_DATA].p_gthread = NULL;
