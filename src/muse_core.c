@@ -45,8 +45,7 @@ static gboolean (*job_functions[MUSE_CHANNEL_MAX])
 static int _muse_core_set_nonblocking(int fd);
 static int _muse_core_check_server_is_running(void);
 static muse_core_t *_muse_core_create_new_server_from_fd(int fd[], int type);
-static gboolean _muse_core_connection_handler(GIOChannel *source,
-		GIOCondition condition, gpointer data);
+static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition condition, gpointer data);
 static int _muse_core_free(muse_core_t *server);
 
 static int _muse_core_set_nonblocking(int fd)
