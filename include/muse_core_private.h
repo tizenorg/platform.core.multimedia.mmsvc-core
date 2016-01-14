@@ -59,6 +59,7 @@ typedef struct muse_module {
 	int disp_api;
 	gpointer usr_data;
 	intptr_t handle;
+	gboolean is_create_api_called;
 } muse_module_t;
 
 typedef struct muse_core {

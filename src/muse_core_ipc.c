@@ -52,7 +52,7 @@ static void _muse_core_ipc_init_instance(void (*deinit)(void));
 static void _muse_core_ipc_client_cleanup(muse_module_h module)
 {
 	g_return_if_fail(module != NULL);
-	int idx;
+
 	muse_core_log_get_instance()->flush_msg();
 	g_queue_free(module->ch[MUSE_CHANNEL_DATA].queue);
 	module->ch[MUSE_CHANNEL_DATA].queue = NULL;
@@ -101,6 +101,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 					case API_CREATE:
 						if (muse_core_msg_json_deserialize(MUSE_MODULE, module->recvMsg + module->msg_offset, &parse_len, &api_module, &err, MUSE_TYPE_INT)) {
 							module->api_module = api_module;
+							module->is_create_api_called = true;
 							module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_get_instance()->load(api_module);
 							module->ch[MUSE_CHANNEL_DATA].queue = g_queue_new();
 							g_mutex_init(&module->ch[MUSE_CHANNEL_DATA].mutex);
@@ -116,6 +117,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 					default:
 						if (muse_core_module_get_instance()->get_dllsymbol_loaded_value(module->api_module) == false) {
 							LOGE("Please check whether it has really intended to not call the create api");
+							module->is_create_api_called = false;
 							if (muse_core_msg_json_deserialize(MUSE_MODULE, module->recvMsg + module->msg_offset, &parse_len, &api_module, &err, MUSE_TYPE_INT)) {
 								module->api_module = api_module;
 								module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_get_instance()->load(api_module);
@@ -125,6 +127,8 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 						}
 						LOGD("[default] module's dll_handle: %p", module->ch[MUSE_CHANNEL_MSG].dll_handle);
 						muse_core_module_get_instance()->dispatch(cmd, module);
+						if (module->is_create_api_called == false)
+							_muse_core_ipc_client_cleanup(module);
 						break;
 					}
 				} else {
@@ -366,8 +370,8 @@ int muse_core_ipc_push_data(int sock_fd, const char *data, int size, int data_id
 	g_return_val_if_fail(data != NULL, MM_ERROR_INVALID_ARGUMENT);
 
 	header.marker = MUSE_DATA_HEAD;
-	header.id = data_id;
 	header.size = size;
+	header.id = data_id;
 
 	if ((ret = send(sock_fd, &header, sizeof(muse_recv_data_head_t), 0)) < 0)
 		LOGE("fail to send msg");
