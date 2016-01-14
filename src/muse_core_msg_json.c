@@ -94,7 +94,7 @@ static void _muse_core_msg_json_factory_args(json_object *jobj, va_list ap)
 
 	while ((type = va_arg(ap, int)) != 0) {
 		name = va_arg(ap, char *);
-		LOGD("name: %s ", name);
+		LOGD("name: %s", name);
 		switch (type) {
 		case MUSE_TYPE_INT:
 			json_object_object_add(jobj, name, json_object_new_int(va_arg(ap, int32_t)));
@@ -152,7 +152,7 @@ char *muse_core_msg_json_factory_new(int api, ...)
 	jsonMsg = json_object_to_json_string(jobj);
 	sndMsg = g_strdup(jsonMsg);
 	muse_core_log_get_instance()->set_msg(sndMsg);
-	LOGD("json msg : %s\n", sndMsg);
+	LOGD("json msg : %s", sndMsg);
 
 	json_object_put(jobj);
 
