@@ -1,7 +1,7 @@
 /*
  * muse-core
  *
- * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Contact: YoungHun Kim <yh8004.kim@samsung.com>
  *
@@ -23,6 +23,10 @@
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef TIZEN_BUFFER_MANAGER_MUSE_ENABLE
+#define TIZEN_BUFFER_MANAGER_ENABLE
 #endif
 
 #include "muse_core.h"
