@@ -1,7 +1,7 @@
 /*
  * muse-core
  *
- * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Contact: YoungHun Kim <yh8004.kim@samsung.com>
  *
@@ -251,6 +251,7 @@ static bool _muse_core_ipc_init_bufmgr(void)
 	LOGD("Enter");
 	g_return_val_if_fail(g_muse_core_ipc != NULL, FALSE);
 
+	#ifdef TIZEN_BUFFER_MANAGER_ENABLE
 	g_muse_core_ipc->bufmgr = tbm_bufmgr_init(-1);
 	if (g_muse_core_ipc->bufmgr == NULL) {
 		LOGE("Error - tbm_bufmgr_init");
@@ -260,14 +261,23 @@ static bool _muse_core_ipc_init_bufmgr(void)
 
 	LOGD("Leave");
 	return TRUE;
+	#else
+	LOGE("TIZEN BUFFER MANAGER is only built on arm arch");
+	return FALSE;
+	#endif
 }
 
 static void _muse_core_ipc_deinit_bufmgr(void)
 {
 	LOGD("Enter");
+	#ifdef TIZEN_BUFFER_MANAGER_ENABLE
 	g_return_if_fail(g_muse_core_ipc->bufmgr);
 
 	tbm_bufmgr_deinit(g_muse_core_ipc->bufmgr);
+	#else
+	LOGE("TIZEN BUFFER MANAGER is only built on arm arch");
+	#endif
+
 	LOGD("Leave");
 }
 
@@ -278,7 +288,9 @@ static void _muse_core_ipc_init_instance(void (*deinit)(void))
 
 	g_muse_core_ipc = calloc(1, sizeof(*g_muse_core_ipc));
 	g_return_if_fail(g_muse_core_ipc != NULL);
+	#ifdef TIZEN_BUFFER_MANAGER_ENABLE
 	g_return_if_fail(_muse_core_ipc_init_bufmgr() == TRUE);
+	#endif
 
 	g_muse_core_ipc->deinit = deinit;
 }
@@ -434,6 +446,7 @@ int muse_core_ipc_set_handle(muse_module_h module, intptr_t handle)
 int muse_core_ipc_get_bufmgr(tbm_bufmgr *bufmgr)
 {
 	LOGD("Enter");
+	#ifdef TIZEN_BUFFER_MANAGER_ENABLE
 	g_return_val_if_fail(bufmgr, MM_ERROR_INVALID_ARGUMENT);
 	g_return_val_if_fail(g_muse_core_ipc->bufmgr, MM_ERROR_INVALID_ARGUMENT);
 
@@ -441,6 +454,10 @@ int muse_core_ipc_get_bufmgr(tbm_bufmgr *bufmgr)
 	*bufmgr = g_muse_core_ipc->bufmgr;
 	LOGD("Leave");
 	return MM_ERROR_NONE;
+	#else
+	LOGE("TIZEN BUFFER MANAGER is only built on arm arch");
+	return MM_ERROR_NOT_SUPPORT_API;
+	#endif
 }
 
 muse_core_ipc_t *muse_core_ipc_get_instance(void)
