@@ -26,8 +26,11 @@ extern "C" {
 #endif
 
 #include "muse_core.h"
+#include "muse_core_private.h"
 #include "muse_core_workqueue.h"
+#ifdef TIZEN_BUFFER_MANAGER_ENABLE
 #include <tbm_bufmgr.h>
+#endif
 
 #define MUSE_DATA_HEAD 0xda1a6ead
 #define MUSE_API "api"
@@ -35,7 +38,9 @@ extern "C" {
 #define MUSE_MODULE_ADDR "module_addr"
 
 typedef struct muse_core_ipc {
+	#ifdef TIZEN_BUFFER_MANAGER_ENABLE
 	tbm_bufmgr bufmgr;
+	#endif
 	void (*deinit)(void);
 } muse_core_ipc_t;
 
@@ -76,7 +81,9 @@ char *muse_core_ipc_get_data(muse_module_h module);
 intptr_t muse_core_ipc_get_handle(muse_module_h module);
 int muse_core_ipc_set_handle(muse_module_h module, intptr_t handle);
 void muse_core_ipc_delete_data(char *data);
+#ifdef TIZEN_BUFFER_MANAGER_ENABLE
 int muse_core_ipc_get_bufmgr(tbm_bufmgr *bufmgr);
+#endif
 muse_core_ipc_t *muse_core_ipc_get_instance(void);
 void muse_core_ipc_init(void);
 

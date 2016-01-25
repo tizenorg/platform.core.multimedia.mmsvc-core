@@ -30,6 +30,10 @@
 extern "C" {
 #endif
 
+#ifdef TIZEN_BUFFER_MANAGER_MUSE_ENABLE
+#define TIZEN_BUFFER_MANAGER_ENABLE
+#endif
+
 typedef gboolean(*MUSE_MODULE_Callback) (GIOChannel * source, GIOCondition condition, gpointer data);
 
 typedef enum {
