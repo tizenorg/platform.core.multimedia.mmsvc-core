@@ -25,6 +25,10 @@
 extern "C" {
 #endif
 
+#ifdef TIZEN_BUFFER_MANAGER_MUSE_ENABLE
+#define TIZEN_BUFFER_MANAGER_ENABLE
+#endif
+
 #include "muse_core.h"
 #include "muse_core_workqueue.h"
 #include <tbm_bufmgr.h>

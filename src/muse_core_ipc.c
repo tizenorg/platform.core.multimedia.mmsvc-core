@@ -251,12 +251,17 @@ static bool _muse_core_ipc_init_bufmgr(void)
 	LOGD("Enter");
 	g_return_val_if_fail(g_muse_core_ipc != NULL, FALSE);
 
+	#ifdef TIZEN_BUFFER_MANAGER_ENABLE
 	g_muse_core_ipc->bufmgr = tbm_bufmgr_init(-1);
 	if (g_muse_core_ipc->bufmgr == NULL) {
 		LOGE("Error - tbm_bufmgr_init");
 		return FALSE;
 	}
 	LOGD("bufmgr: 0x%x", g_muse_core_ipc->bufmgr);
+	#else
+	LOGE("TIZEN BUFFER MANAGER is only built on arm arch");
+	return MM_ERROR_NOT_SUPPORT_API;
+	#endif
 
 	LOGD("Leave");
 	return TRUE;
@@ -265,9 +270,14 @@ static bool _muse_core_ipc_init_bufmgr(void)
 static void _muse_core_ipc_deinit_bufmgr(void)
 {
 	LOGD("Enter");
+	#ifdef TIZEN_BUFFER_MANAGER_ENABLE
 	g_return_if_fail(g_muse_core_ipc->bufmgr);
 
 	tbm_bufmgr_deinit(g_muse_core_ipc->bufmgr);
+	#else
+	LOGE("TIZEN BUFFER MANAGER is only built on arm arch");
+	return MM_ERROR_NOT_SUPPORT_API;
+	#endif
 	LOGD("Leave");
 }
 
@@ -434,6 +444,7 @@ int muse_core_ipc_set_handle(muse_module_h module, intptr_t handle)
 int muse_core_ipc_get_bufmgr(tbm_bufmgr *bufmgr)
 {
 	LOGD("Enter");
+	#ifdef TIZEN_BUFFER_MANAGER_ENABLE
 	g_return_val_if_fail(bufmgr, MM_ERROR_INVALID_ARGUMENT);
 	g_return_val_if_fail(g_muse_core_ipc->bufmgr, MM_ERROR_INVALID_ARGUMENT);
 
@@ -441,6 +452,10 @@ int muse_core_ipc_get_bufmgr(tbm_bufmgr *bufmgr)
 	*bufmgr = g_muse_core_ipc->bufmgr;
 	LOGD("Leave");
 	return MM_ERROR_NONE;
+	#else
+	LOGE("TIZEN BUFFER MANAGER is only built on arm arch");
+	return MM_ERROR_NOT_SUPPORT_API;
+	#endif
 }
 
 muse_core_ipc_t *muse_core_ipc_get_instance(void)
