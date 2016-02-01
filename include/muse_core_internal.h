@@ -69,6 +69,7 @@ extern "C" {
 #define READ		0x02
 #define PERSIST	0x10
 
+#define MUSE_READ_MSG_LEN 1024*512
 #define DISPATCHER "dispatcher"
 #define CMD_DISPATCHER "cmd_dispatcher"
 #define MUSE_FREE(src) { if (src) {g_free(src); src = NULL;} }

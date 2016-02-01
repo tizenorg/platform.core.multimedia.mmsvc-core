@@ -362,7 +362,7 @@ int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 
 	g_return_val_if_fail(msg != NULL, MM_ERROR_INVALID_ARGUMENT);
 
-	if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0)
+	if ((ret = recv(sock_fd, msg, MUSE_READ_MSG_LEN, 0)) < 0)
 		LOGE("fail to receive msg (%s)", strerror(errno));
 
 	return ret;
