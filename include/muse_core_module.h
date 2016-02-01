@@ -45,8 +45,8 @@ typedef struct muse_core_module {
 	void (*set_dllsymbol_loaded_value) (int, GModule *, gboolean);
 	gboolean (*get_dllsymbol_loaded_value) (int);
 	GModule* (*get_dllsymbol_value) (int);
-	void (*set_value) (muse_module_h, const char *, int);
-	int (*get_value) (muse_module_h, const char *, int *);
+	void (*set_value) (int, const char *, int);
+	int (*get_value) (int, const char *, int *);
 	void (*free) (void);
 	gboolean module_loaded[MUSE_MODULE_MAX];
 	GModule *module[MUSE_MODULE_MAX];
