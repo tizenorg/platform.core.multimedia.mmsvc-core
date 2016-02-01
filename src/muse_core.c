@@ -108,7 +108,7 @@ static int _muse_core_check_server_is_running(void)
 	return 1;
 }
 
-static bool _muse_core_attach_server(int fd, MUSE_MODULE_Callback callback, gpointer param)
+static bool _muse_core_attach_server(int fd, muse_module_callback callback, gpointer param)
 {
 	GIOChannel *channel;
 	GSource *src = NULL;
