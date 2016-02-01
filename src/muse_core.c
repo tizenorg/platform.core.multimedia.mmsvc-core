@@ -481,7 +481,7 @@ int muse_core_client_set_value(muse_module_h module, const char *value_name, int
 {
 	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
 	g_return_val_if_fail(value_name, MM_ERROR_INVALID_ARGUMENT);
-	muse_core_module_get_instance()->set_value(module, value_name, set_value);
+	muse_core_module_get_instance()->set_value(module->api_module, value_name, set_value);
 	return MM_ERROR_NONE;
 }
 
@@ -491,7 +491,7 @@ int muse_core_client_get_value(muse_module_h module, const char *value_name, int
 	g_return_val_if_fail(value_name, MM_ERROR_INVALID_ARGUMENT);
 	g_return_val_if_fail(get_value, MM_ERROR_INVALID_ARGUMENT);
 
-	return muse_core_module_get_instance()->get_value(module, value_name, get_value);
+	return muse_core_module_get_instance()->get_value(module->api_module, value_name, get_value);
 }
 
 void muse_core_connection_close(int sock_fd)
