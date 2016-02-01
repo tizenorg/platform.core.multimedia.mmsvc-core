@@ -171,10 +171,9 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 		}
 		recvLen = muse_core_ipc_recv_msg(fd, recvBuff + currLen);
 		currLen += recvLen;
-		LOGD("buff %p, recvLen %d, currLen %d, allocSize %d",
-				recvBuff, recvLen, currLen, allocSize);
+		LOGD("buff %p, recvLen %d, currLen %d, allocSize %d", recvBuff, recvLen, currLen, allocSize);
 		if (recvLen <= 0) {
-			LOGE("recv : %s (%d)", strerror(errno), errno);
+			LOGE("[%d] recv : %s (%d)", fd, strerror(errno), errno);
 			break;
 		} else {
 			if (module) {
@@ -203,8 +202,7 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 				}
 			} else {
 				intptr_t module_addr = 0;
-				if (muse_core_msg_json_deserialize(MUSE_MODULE_ADDR,
-							recvBuff, NULL, &module_addr, NULL, MUSE_TYPE_POINTER)) {
+				if (muse_core_msg_json_deserialize(MUSE_MODULE_ADDR, recvBuff, NULL, &module_addr, NULL, MUSE_TYPE_POINTER)) {
 					module = (muse_module_h) module_addr;
 					if (module)
 						module->ch[MUSE_CHANNEL_DATA].p_gthread = g_thread_self();
@@ -354,6 +352,7 @@ int muse_core_ipc_send_msg(int sock_fd, const char *msg)
 	if ((ret = send(sock_fd, msg, strlen(msg), 0)) < 0)
 		LOGE("send msg failed");
 
+	LOGD("strlen: %d", ret);
 	return ret;
 }
 
@@ -366,6 +365,7 @@ int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 	if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0)
 		LOGE("fail to receive msg (%s)", strerror(errno));
 
+	LOGD("strlen: %d", ret);
 	return ret;
 }
 

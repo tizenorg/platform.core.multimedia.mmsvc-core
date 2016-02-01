@@ -108,7 +108,7 @@ static int _muse_core_check_server_is_running(void)
 	return 1;
 }
 
-static bool _muse_core_attach_server(int fd, MUSE_MODULE_Callback callback, gpointer param)
+static bool _muse_core_attach_server(int fd, muse_module_callback callback, gpointer param)
 {
 	GIOChannel *channel;
 	GSource *src = NULL;
@@ -485,7 +485,7 @@ int muse_core_client_get_value(muse_module_h module, const char *value_name, int
 void muse_core_connection_close(int sock_fd)
 {
 	if (sock_fd > 0) {
-		LOGD("[%d] shutdown", sock_fd);
+		LOGD("[sock_fd: %d] shutdown", sock_fd);
 		shutdown(sock_fd, SHUT_RDWR);
 		close(sock_fd);
 	}
