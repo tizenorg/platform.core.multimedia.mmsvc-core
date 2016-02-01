@@ -92,7 +92,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 			api_module = 0;
 			module->msg_offset = 0;
 
-			muse_core_log_get_instance()->log(module->recvMsg);
+			muse_core_log_get_instance()->set_msg(module->recvMsg);
 
 			while (module->msg_offset < len) {
 				if (muse_core_msg_json_deserialize(MUSE_API, module->recvMsg + module->msg_offset, &parse_len, &cmd, &err, MUSE_TYPE_INT)) {
@@ -362,7 +362,7 @@ int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 
 	g_return_val_if_fail(msg != NULL, MM_ERROR_INVALID_ARGUMENT);
 
-	if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0)
+	if ((ret = recv(sock_fd, msg, MUSE_READ_MSG_LEN, 0)) < 0)
 		LOGE("fail to receive msg (%s)", strerror(errno));
 
 	return ret;
