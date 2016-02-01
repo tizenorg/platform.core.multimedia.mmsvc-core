@@ -92,7 +92,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 			api_module = 0;
 			module->msg_offset = 0;
 
-			muse_core_log_get_instance()->log(module->recvMsg);
+			muse_core_log_get_instance()->set_msg(module->recvMsg);
 
 			while (module->msg_offset < len) {
 				if (muse_core_msg_json_deserialize(MUSE_API, module->recvMsg + module->msg_offset, &parse_len, &cmd, &err, MUSE_TYPE_INT)) {
