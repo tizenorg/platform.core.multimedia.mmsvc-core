@@ -20,9 +20,11 @@
  */
 
 #include <json.h>
+#include "muse_core.h"
 #include "muse_core_msg_json.h"
 #include "muse_core_log.h"
 #include "muse_core_internal.h"
+
 
 static json_object *_muse_core_msg_json_find_obj(json_object * jobj, const char *find_key)
 {
@@ -63,6 +65,8 @@ static json_object *_muse_core_msg_json_tokener_parse_len(const char *str, int *
 {
 	struct json_tokener *tok;
 	struct json_object *obj;
+	enum json_tokener_error error;
+	int msg_len;
 
 	g_return_val_if_fail(str != NULL, NULL);
 
@@ -70,18 +74,27 @@ static json_object *_muse_core_msg_json_tokener_parse_len(const char *str, int *
 
 	g_return_val_if_fail(tok != NULL, NULL);
 
-	obj = json_tokener_parse_ex(tok, str, strlen(str));
+	msg_len = strlen(str);
+
+	LOGD("msg length: %d", msg_len);
+
+	do {
+		obj = json_tokener_parse_ex(tok, str, msg_len);
+		error = json_tokener_get_error(tok);
+		LOGD("[msg length: %d] parse json (%d) request: %d", msg_len, tok->char_offset, error);
+	} while (error == json_tokener_continue);
+
 	g_return_val_if_fail(obj != NULL, NULL);
 
-	if (len)
+	if (len && msg_len > tok->char_offset)
 		*len = tok->char_offset;
 
-	if (tok->err != json_tokener_success) {
-		LOGE("Json Error(%d) : %s", tok->err, json_tokener_error_desc(tok->err));
+	if (error != json_tokener_success) {
+		LOGE("Json Error(%d) : %s", error, json_tokener_error_desc(error));
 		json_object_put(obj);
 		obj = NULL;
 	}
-	_muse_core_msg_json_set_error(err, tok->err);
+	_muse_core_msg_json_set_error(err, error);
 
 	json_tokener_free(tok);
 	return obj;
@@ -138,6 +151,7 @@ char *muse_core_msg_json_factory_new(int api, ...)
 	const char *jsonMsg;
 	char *sndMsg;
 	va_list ap;
+	int len;
 
 	jobj = json_object_new_object();
 
@@ -151,6 +165,9 @@ char *muse_core_msg_json_factory_new(int api, ...)
 
 	jsonMsg = json_object_to_json_string(jobj);
 	sndMsg = g_strdup(jsonMsg);
+
+	len = strlen(sndMsg);
+
 	muse_core_log_get_instance()->set_msg(sndMsg);
 
 	if (len < MUSE_MSG_MAX_LENGTH)
