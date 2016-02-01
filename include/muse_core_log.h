@@ -31,7 +31,6 @@ extern "C" {
 
 typedef struct muse_core_log {
 	int type;
-	unsigned refs;
 	char *buf;
 	size_t size;
 	char cache[WRITE_DEFAULT_BLOCK_SIZE];

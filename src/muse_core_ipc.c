@@ -171,10 +171,9 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 		}
 		recvLen = muse_core_ipc_recv_msg(fd, recvBuff + currLen);
 		currLen += recvLen;
-		LOGD("buff %p, recvLen %d, currLen %d, allocSize %d",
-				recvBuff, recvLen, currLen, allocSize);
+		LOGD("buff %p, recvLen %d, currLen %d, allocSize %d", recvBuff, recvLen, currLen, allocSize);
 		if (recvLen <= 0) {
-			LOGE("recv : %s (%d)", strerror(errno), errno);
+			LOGE("[%d] recv : %s (%d)", fd, strerror(errno), errno);
 			break;
 		} else {
 			if (module) {
