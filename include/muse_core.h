@@ -1,7 +1,7 @@
 /*
  * muse-core
  *
- * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Contact: YoungHun Kim <yh8004.kim@samsung.com>
  *
