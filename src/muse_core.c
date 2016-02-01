@@ -391,7 +391,11 @@ int muse_core_run()
 	context = g_main_context_new();
 	g_return_val_if_fail(context, MM_ERROR_INVALID_ARGUMENT);
 	LOGD("context: %p", context);
+	#if 0
 	g_loop = g_main_loop_new(context, FALSE);
+	#else
+	g_loop = g_main_loop_new(NULL, FALSE);
+	#endif
 	g_main_context_unref(context);
 
 	g_thread = g_thread_new("muse_core_thread", muse_core_main_loop, g_loop);
@@ -493,7 +497,7 @@ int muse_core_client_get_value(muse_module_h module, const char *value_name, int
 void muse_core_connection_close(int sock_fd)
 {
 	if (sock_fd > 0) {
-		LOGD("[%d] shutdown", sock_fd);
+		LOGD("[sock_fd: %d] shutdown", sock_fd);
 		shutdown(sock_fd, SHUT_RDWR);
 		close(sock_fd);
 	}
