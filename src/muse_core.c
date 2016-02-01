@@ -42,19 +42,20 @@ static gboolean (*job_functions[MUSE_CHANNEL_MAX])
 		muse_core_ipc_data_job_function
 	};
 
-static int _muse_core_set_nonblocking(int fd);
+static int _muse_core_set_nonblocking(int fd, bool value);
 static int _muse_core_check_server_is_running(void);
 static muse_core_t *_muse_core_create_new_server_from_fd(int fd[], int type);
 static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition condition, gpointer data);
 static int _muse_core_free(muse_core_t *server);
 
-static int _muse_core_set_nonblocking(int fd)
+static int _muse_core_set_nonblocking(int fd, bool value)
 {
 	int flags = fcntl(fd, F_GETFL, NULL);
 
 	if (flags >= 0) {
-		LOGD("fcntl nonblocking");
-		if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+		flags = value ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
+
+		if (fcntl(fd, F_SETFL, flags) == -1) {
 			LOGE("fcntl (%d, F_SETFL) %s", fd, strerror(errno));
 			return -1;
 		} else {
@@ -228,7 +229,7 @@ int _muse_core_server_new(muse_core_channel_e channel)
 		return -1;
 	}
 
-	if (_muse_core_set_nonblocking(fd) < 0)
+	if (_muse_core_set_nonblocking(fd, false) < 0) /* blocking */
 		LOGE("failed to set server socket to non-blocking");
 
 	return fd;
@@ -320,6 +321,9 @@ static int _muse_core_client_new(muse_core_channel_e channel)
 	address.sun_family = AF_UNIX;
 	strncpy(address.sun_path, UDS_files[channel], sizeof(address.sun_path));
 	len = sizeof(address);
+
+	if (_muse_core_set_nonblocking(sockfd, false) != MM_ERROR_NONE)
+		LOGE("Error - fd (%d) set nonblocking", sockfd);
 
 	if ((ret = connect(sockfd, (struct sockaddr *)&address, len)) < 0) {
 		LOGE("connect failure");
