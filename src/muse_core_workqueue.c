@@ -37,19 +37,15 @@ static void *_muse_core_workqueue_worker_function(void *ptr)
 		pthread_mutex_lock(&worker->workqueue->jobs_mutex);
 		while (worker->workqueue->waiting_jobs == NULL) {
 			/* If we're supposed to terminate, break out of our continuous loop. */
-			if (worker->terminate) {
-				LOGD("worker is terminated");
+			if (worker->terminate)
 				break;
-			}
 
 			pthread_cond_wait(&worker->workqueue->jobs_cond, &worker->workqueue->jobs_mutex);
 		}
 
 		/* If we're supposed to terminate, break out of our continuous loop. */
-		if (worker->terminate) {
-			LOGD("worker is terminated");
+		if (worker->terminate)
 			break;
-		}
 
 		job = worker->workqueue->waiting_jobs;
 		if (job != NULL)

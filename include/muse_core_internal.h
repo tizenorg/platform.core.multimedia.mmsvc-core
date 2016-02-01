@@ -66,16 +66,8 @@ extern "C" {
 #define SOCKFILE0 "/tmp/.muse_core_socket"
 #define SOCKFILE1 "/tmp/.muse_core_data_socket"
 
-#define TIMEOUT	0x01
-/** Wait for a socket or FD to become readable */
 #define READ		0x02
-/** Wait for a socket or FD to become writeable */
-#define WRITE		0x04
-/** Wait for a POSIX signal to be raised*/
-#define SIGNAL		0x08
 #define PERSIST	0x10
-/** Select edge-triggered behavior, if supported by the backend. */
-#define EDGETRIGGERED 	0x20
 
 #define DISPATCHER "dispatcher"
 #define CMD_DISPATCHER "cmd_dispatcher"

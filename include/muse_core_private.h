@@ -30,7 +30,7 @@
 extern "C" {
 #endif
 
-typedef gboolean(*MUSE_MODULE_Callback) (GIOChannel * source, GIOCondition condition, gpointer data);
+typedef gboolean(*muse_module_callback) (GIOChannel * source, GIOCondition condition, gpointer data);
 
 typedef enum {
 	MUSE_CHANNEL_MSG,
@@ -59,7 +59,7 @@ typedef struct muse_module {
 	int disp_api;
 	gpointer usr_data;
 	intptr_t handle;
-	gboolean is_create_api_called;
+	gboolean is_create_api_called; /* If false, corresponding to the static function */
 } muse_module_t;
 
 typedef struct muse_core {
