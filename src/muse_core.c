@@ -376,6 +376,7 @@ muse_core_t *muse_core_new()
 int muse_core_run()
 {
 	int ret = -1;
+	GMainContext *context;
 
 	LOGD("Enter");
 
@@ -387,8 +388,11 @@ int muse_core_run()
 		return 2;
 	}
 
-	/* Sigaction */
-	g_loop = g_main_loop_new(NULL, FALSE);
+	context = g_main_context_new();
+	g_return_val_if_fail(context, MM_ERROR_INVALID_ARGUMENT);
+	LOGD("context: %p", context);
+	g_loop = g_main_loop_new(context, FALSE);
+	g_main_context_unref(context);
 
 	g_thread = g_thread_new("muse_core_thread", muse_core_main_loop, g_loop);
 
