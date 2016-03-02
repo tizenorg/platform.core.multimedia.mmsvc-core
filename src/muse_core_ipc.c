@@ -65,6 +65,7 @@ static void _muse_core_ipc_client_cleanup(muse_module_h module)
 	g_mutex_clear(&module->ch[MUSE_CHANNEL_DATA].mutex);
 	g_cond_clear(&module->ch[MUSE_CHANNEL_DATA].cond);
 	LOGD("worker exit");
+	muse_core_msg_json_object_free();
 	muse_core_worker_exit(module);
 }
 
@@ -365,7 +366,8 @@ int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 	if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0)
 		LOGE("fail to receive msg (%s)", strerror(errno));
 
-	LOGD("strlen: %d", ret);
+	msg[ret] = '\0';
+	LOGD("[strlen: %d] %s", ret, msg);
 	return ret;
 }
 
