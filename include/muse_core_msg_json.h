@@ -52,10 +52,13 @@ typedef enum {
 
 char * muse_core_msg_json_factory_new(int api, ...);
 void muse_core_msg_json_factory_free(char * msg);
+void muse_core_msg_json_free(void);
 gboolean muse_core_msg_json_deserialize(
 		const char *key, char* buf, int *parse_len, void *data,
 		muse_core_msg_parse_err_e *err, muse_core_type_e m_type);
-void muse_core_msg_json_object_free(void);
+void *muse_core_msg_json_object_new(char *str, int *parse_len, muse_core_msg_parse_err_e *err);
+gboolean muse_core_msg_json_object_get_value(const char *key, void* jobj, void *data, muse_core_type_e m_type);
+void muse_core_msg_json_object_free(void * jobj);
 
 #ifdef __cplusplus
 }
