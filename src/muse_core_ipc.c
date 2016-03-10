@@ -73,6 +73,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 	int len, parse_len, cmd, api_module;
 	muse_module_h module = NULL;
 	muse_core_msg_parse_err_e err = MUSE_MSG_PARSE_ERROR_NONE;
+	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	g_return_val_if_fail(data != NULL, NULL);
 
 	module = (muse_module_h)data;
@@ -82,7 +83,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 		memset(module->recvMsg, 0x00, sizeof(module->recvMsg));
 		len = muse_core_ipc_recv_msg(module->ch[MUSE_CHANNEL_MSG].fd, module->recvMsg);
 		if (len <= 0) {
-			LOGE("recv : %s (%d)", strerror(errno), errno);
+			LOGE("recv : %s (%d)", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN), errno);
 			muse_core_cmd_dispatch(module, MUSE_MODULE_EVENT_SHUTDOWN);
 			_muse_core_ipc_client_cleanup(module);
 		} else {
@@ -157,7 +158,7 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 	muse_module_h module = NULL;
 	char *recvBuff = NULL;
 	int allocSize = 0;
-
+	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	g_return_val_if_fail(fd > 0, NULL);
 
 	while (1) {
@@ -173,7 +174,7 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 		currLen += recvLen;
 		LOGD("buff %p, recvLen %d, currLen %d, allocSize %d", recvBuff, recvLen, currLen, allocSize);
 		if (recvLen <= 0) {
-			LOGE("[%d] recv : %s (%d)", fd, strerror(errno), errno);
+			LOGE("[%d] recv : %s (%d)", fd, strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN), errno);
 			break;
 		} else {
 			if (module) {
@@ -359,11 +360,11 @@ int muse_core_ipc_send_msg(int sock_fd, const char *msg)
 int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 {
 	int ret = MM_ERROR_NONE;
-
+	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	g_return_val_if_fail(msg != NULL, MM_ERROR_INVALID_ARGUMENT);
 
 	if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0)
-		LOGE("fail to receive msg (%s)", strerror(errno));
+		LOGE("fail to receive msg (%s)", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
 	else
 		msg[ret] = '\0';
 

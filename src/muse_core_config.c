@@ -39,6 +39,7 @@ static int _muse_core_config_parser(void)
 	char *str;
 	int idx;
 	int ret = -1;
+	char *ptr = NULL;
 
 	g_return_val_if_fail(g_muse_core_conf != NULL, ret);
 
@@ -85,7 +86,7 @@ static int _muse_core_config_parser(void)
 	}
 
 	g_muse_core_conf->type = 0;
-	host = strtok(g_muse_core_conf->hosts, COMMA);
+	host = strtok_r(g_muse_core_conf->hosts, COMMA, &ptr);
 
 	while (host != NULL) {
 		g_muse_core_conf->host[g_muse_core_conf->type] = strdup(host);
@@ -100,8 +101,8 @@ static int _muse_core_config_parser(void)
 
 		/* path */
 		strncpy(host_name, host, strlen(host) + 1);
-		strcat(host_name, COLON);
-		strcat(host_name, PATH);
+		strncat(host_name, COLON, strlen(COLON));
+		strncat(host_name, PATH, strlen(PATH));
 		g_strstrip(host_name); /*Removes leading and trailing whitespace from a string*/
 
 		g_muse_core_conf->host_infos[g_muse_core_conf->type] = (host_info_t *) malloc(sizeof(host_info_t));
@@ -124,8 +125,8 @@ static int _muse_core_config_parser(void)
 
 		/* path */
 		strncpy(host_name, host, strlen(host) + 1);
-		strcat(host_name, COLON);
-		strcat(host_name, PRELOADED);
+		strncat(host_name, COLON, strlen(COLON));
+		strncat(host_name, PRELOADED, strlen(PRELOADED));
 		g_strstrip(host_name); /*Removes leading and trailing whitespace from a string*/
 
 		g_muse_core_conf->host_infos[g_muse_core_conf->type]->preloaded= strdup(iniparser_getstring(g_muse_core_conf->muse_dict, host_name, NULL));
@@ -136,7 +137,7 @@ static int _muse_core_config_parser(void)
 			return ret;
 		}
 
-		host = strtok(NULL, COMMA);
+		host = strtok_r(NULL, COMMA, &ptr);
 		g_muse_core_conf->type++;
 		MUSE_FREE(host_name);
 	}
@@ -148,13 +149,14 @@ static void _muse_core_config_free(void)
 {
 	char *host;
 	int i = 0;
+	char *ptr = NULL;
 
 	g_return_if_fail(g_muse_core_conf != NULL);
 
 	if (g_muse_core_conf->muse_dict)
 		iniparser_freedict(g_muse_core_conf->muse_dict);
 
-	host = strtok(g_muse_core_conf->hosts, COMMA);
+	host = strtok_r(g_muse_core_conf->hosts, COMMA, &ptr);
 	g_muse_core_conf->type = 0;
 
 	while (host != NULL) {
@@ -162,7 +164,7 @@ static void _muse_core_config_free(void)
 		MUSE_FREE(g_muse_core_conf->host_infos[g_muse_core_conf->type]->path);
 		MUSE_FREE(g_muse_core_conf->host_infos[g_muse_core_conf->type]->preloaded);
 		MUSE_FREE(g_muse_core_conf->host_infos[g_muse_core_conf->type]);
-		host = strtok(NULL, COMMA);
+		host = strtok_r(NULL, COMMA, &ptr);
 		g_muse_core_conf->type++;
 	}
 	MUSE_FREE(g_muse_core_conf->hosts);
