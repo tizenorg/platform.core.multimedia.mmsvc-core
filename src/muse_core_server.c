@@ -75,9 +75,8 @@ static void _muse_core_server_gst_init(char **cmd)
 	}
 
 	/* release */
-	for (i = 0; i < *argc; i++) {
+	for (i = 0; i <= *argc; i++)
 		MUSE_FREE(argv[i]);
-	}
 
 	MUSE_FREE(argv);
 	MUSE_FREE(argc);

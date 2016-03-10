@@ -52,8 +52,9 @@ static void _muse_core_log_flush_msg(void);
 
 static void _muse_core_log_sig_abort(int signo)
 {
+	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	if (SIG_ERR == signal(SIGABRT, SIG_DFL))
-		LOGE("SIGABRT handler: %s", strerror(errno));
+		LOGE("SIGABRT handler: %s", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
 
 	static char client_name[256];
 	memset(client_name, '\0', sizeof(client_name));
@@ -120,6 +121,7 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 	int i;
 	char **strings = NULL;
 	ucontext_t *uctxt = NULL;
+	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 
 	g_return_if_fail(si != NULL);
 	g_return_if_fail(arg != NULL);
@@ -128,7 +130,7 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 
 	tracesize = backtrace(trace, TUNABLE_CALLER_DEPTH);
 	if (tracesize < 0)
-		LOGE("backtrace error: %s", strerror(errno));
+		LOGE("backtrace error: %s", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
 
 	uctxt = (ucontext_t *) arg;
 
@@ -144,7 +146,7 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 	#endif
 	strings = backtrace_symbols(trace, tracesize);
 	if (strings == NULL) {
-		LOGE("backtrace_symbols error: %s", strerror(errno));
+		LOGE("backtrace_symbols error: %s", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
 	} else {
 		/* skip the first stack frame because it just points here. */
 		for (i = 1; i < tracesize; ++i) {
@@ -161,8 +163,6 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 
 static int _muse_core_log_open_work(const char *path)
 {
-	if (access(path, F_OK) == 0)
-		unlink(path);
 	return open(path, O_CREAT | O_APPEND | O_WRONLY | O_NONBLOCK, 0666);
 }
 
@@ -180,11 +180,7 @@ static void _muse_core_log_create_fd(void)
 			stat(file[index], &st);
 			g_muse_core_log->size = st.st_size;
 			if (g_muse_core_log->size > MAX_SIZE) {
-				if (index == MAX_FILE_NUM - 1)
-					selected_index = 0;
-				else
-					selected_index = index + 1;
-
+				selected_index = (index + 1) % MAX_FILE_NUM;
 				break;
 			} else {
 				selected_index = index;
@@ -209,12 +205,13 @@ static void _muse_core_log_create_fd(void)
 
 static void _muse_core_log_set_log_fd(void)
 {
+	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	g_return_if_fail(g_muse_core_log != NULL);
 
 	_muse_core_log_create_fd();
 
 	if (fcntl(g_muse_core_log->log_fd, F_SETFD, FD_CLOEXEC) < 0)
-		LOGE("unable to set CLO_EXEC on log fd %d: %s", g_muse_core_log->log_fd, strerror(errno));
+		LOGE("unable to set CLO_EXEC on log fd %d: %s", g_muse_core_log->log_fd, strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
 
 	(void) _muse_core_log_fd_set_block(g_muse_core_log->log_fd);
 }
