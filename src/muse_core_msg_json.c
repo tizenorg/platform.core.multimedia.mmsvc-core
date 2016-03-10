@@ -20,85 +20,33 @@
  */
 
 #include <json.h>
-#include <json_tokener.h>
 #include "muse_core_msg_json.h"
 #include "muse_core_log.h"
 #include "muse_core_ipc.h"
 #include "muse_core_internal.h"
 
-typedef struct muse_core_msg_json {
-	struct json_object *jso;
-	struct json_tokener *tok;
-	int parsed_len;
-} muse_core_msg_json_t;
-
-static muse_core_msg_json_t *g_muse_core_msg_json = NULL;
-
-static void _muse_core_msg_json_init()
-{
-	if (g_muse_core_msg_json == NULL) {
-		LOGD("Init g_muse_core_msg_json");
-		g_muse_core_msg_json = calloc(1, sizeof(*g_muse_core_msg_json));
-		g_return_if_fail(g_muse_core_msg_json != NULL);
-	}
-}
-
-static void _muse_core_msg_json_tokener_new()
-{
-	LOGD("Enter");
-
-	if (g_muse_core_msg_json->tok == NULL) {
-		g_muse_core_msg_json->tok = json_tokener_new();
-		LOGD("Init json_tokener: %p", g_muse_core_msg_json->tok);
-	}
-
-	LOGD("Leave");
-}
-
-static void _muse_core_msg_json_object_new()
-{
-	LOGD("Enter");
-
-	if (g_muse_core_msg_json == NULL)
-		_muse_core_msg_json_init();
-
-	if (g_muse_core_msg_json->jso != NULL) {
-		LOGD("free jso: %p", g_muse_core_msg_json->jso);
-		json_object_put(g_muse_core_msg_json->jso);
-		LOGD("json_tokener_reset: %p", g_muse_core_msg_json->tok);
-		json_tokener_reset(g_muse_core_msg_json->tok);
-		g_muse_core_msg_json->jso = NULL;
-		g_muse_core_msg_json->parsed_len = 0;
-	}
-
-	LOGD("Leave");
-}
-
-static json_object *_muse_core_msg_json_find_obj(const char *find_key)
+static json_object *_muse_core_msg_json_find_obj(json_object * jobj, const char *find_key)
 {
 	size_t key_len = 0;
 
-	g_return_val_if_fail(g_muse_core_msg_json != NULL, NULL);
-	g_return_val_if_fail(g_muse_core_msg_json->jso != NULL, NULL);
+	g_return_val_if_fail(jobj != NULL, NULL);
 
 	g_return_val_if_fail(find_key != NULL, NULL);
 
 	key_len = strlen(find_key);
 
-	json_object_object_foreach(g_muse_core_msg_json->jso, key, val) {
-		if (strlen(key) == key_len && !memcmp(key, find_key, key_len)) {
-			LOGD("[%s] : %s", key, json_object_to_json_string(val));
+	json_object_object_foreach(jobj, key, val) {
+		if (strlen(key) == key_len && !memcmp(key, find_key, key_len))
 			return val;
-		}
 	}
 
 	return NULL;
 }
 
-static void _muse_core_msg_json_set_error(muse_core_msg_parse_err_e *err, enum json_tokener_error *jerr)
+static void _muse_core_msg_json_set_error(muse_core_msg_parse_err_e *err, int jerr)
 {
 	if (err != NULL) {
-		switch (*jerr) {
+		switch (jerr) {
 		case json_tokener_success:
 			*err = MUSE_MSG_PARSE_ERROR_NONE;
 			break;
@@ -112,97 +60,31 @@ static void _muse_core_msg_json_set_error(muse_core_msg_parse_err_e *err, enum j
 	}
 }
 
-static void _muse_core_msg_json_get_object_value(const char *key, void *data, muse_core_type_e m_type)
+static json_object *_muse_core_msg_json_tokener_parse_len(const char *str, int *len, muse_core_msg_parse_err_e *err)
 {
-	int j_type;
-	json_object *val;
-
-	g_return_if_fail(g_muse_core_msg_json != NULL);
-	g_return_if_fail(g_muse_core_msg_json->jso != NULL);
-
-	LOGD("current json_object: %p", g_muse_core_msg_json->jso);
-
-	val = _muse_core_msg_json_find_obj(key);
-	if (!val) {
-		LOGE("\"%s\" key is not founded", key);
-		return;
-	}
-
-	j_type = json_object_get_type(val);
-	switch (j_type) {
-	case json_type_null:
-		LOGD("json_type_null\n");
-		break;
-	case json_type_boolean:
-		LOGD("json_type_boolean (%s)          value: %d", key, json_object_get_boolean(val));
-		break;
-	case json_type_double:
-		*(double *)data = json_object_get_double(val);
-		LOGD("json_type_double (%s)          value: %p", key, (double *)data);
-		break;
-	case json_type_int:
-		if (m_type == MUSE_TYPE_ANY || m_type == MUSE_TYPE_INT) {
-			*(int32_t *)data = json_object_get_int(val);
-			LOGD("json_type_int (%s)          value: %d", key, *(int32_t *)data);
-		} else if (m_type == MUSE_TYPE_INT64) {
-			*(int64_t *)data = json_object_get_int64(val);
-			LOGD("json_type_int (%s)          value: %" G_GINT64_FORMAT "", key, *(int64_t *)data);
-		} else if (m_type == MUSE_TYPE_POINTER) {
-			if (sizeof(intptr_t) == 8)
-				*(intptr_t *)data = json_object_get_int64(val);
-			else
-				*(intptr_t *)data = json_object_get_int(val);
-			LOGD("json_type_int (%s)          value: %p", key, *(intptr_t *)data);
-		} else if (m_type == MUSE_TYPE_DOUBLE) {
-			*(double *)data = json_object_get_double(val);
-			LOGD("json_type_double (%s)          value: %.20lf", key, *(double *)data);
-		}
-		break;
-	case json_type_object:
-		LOGD("json_type_object (%s)          value: %d", key, json_object_get_object(val));
-		break;
-	case json_type_string:
-		strncpy((char *)data, json_object_get_string(val), strlen(json_object_get_string(val)));
-		LOGD("json_type_string (%s)          value: %s", key, (char *)data);
-		break;
-	case json_type_array:
-		LOGD("json_type_array (%s)", key);
-		int i, len;
-		int *int_data = (int *)data;
-		LOGD("array length: %d", len = json_object_array_length(val));
-		for (i = 0; i < len; i++)
-			int_data[i] = json_object_get_int(json_object_array_get_idx(val, i));
-		break;
-	default:
-		LOGW("type is not yet implemented");
-		break;
-	}
-}
-
-static json_object *_muse_core_msg_json_tokener_parse_len(const char *str, enum json_tokener_error *jerr, muse_core_msg_parse_err_e *err)
-{
+	struct json_tokener *tok;
 	struct json_object *obj;
-	int str_len;
 
 	g_return_val_if_fail(str != NULL, NULL);
 
-	LOGD("Enter");
+	tok = json_tokener_new();
 
-	_muse_core_msg_json_tokener_new();
-	str_len = strlen(str);
+	g_return_val_if_fail(tok != NULL, NULL);
 
-	obj = json_tokener_parse_ex(g_muse_core_msg_json->tok, str, str_len);
-	*jerr = json_tokener_get_error(g_muse_core_msg_json->tok);
+	obj = json_tokener_parse_ex(tok, str, strlen(str));
+	g_return_val_if_fail(obj != NULL, NULL);
 
-	g_muse_core_msg_json->parsed_len += g_muse_core_msg_json->tok->char_offset;
+	if (len)
+		*len = tok->char_offset;
 
-	LOGD("[parse length : %d] Parse Result : %s", g_muse_core_msg_json->tok->char_offset, json_tokener_error_desc(*jerr));
+	if (tok->err != json_tokener_success) {
+		LOGE("Json Error(%d) : %s", tok->err, json_tokener_error_desc(tok->err));
+		json_object_put(obj);
+		obj = NULL;
+	}
+	_muse_core_msg_json_set_error(err, tok->err);
 
-	if (*jerr == json_tokener_success)
-		_muse_core_msg_json_set_error(err, jerr);
-
-	LOGD("Leave");
-
+	json_tokener_free(tok);
 	return obj;
 }
 
@@ -258,7 +140,6 @@ char *muse_core_msg_json_factory_new(int api, ...)
 	char *sndMsg;
 	va_list ap;
 
-	_muse_core_msg_json_object_new(); /* muse module object */
 	jobj = json_object_new_object();
 
 	g_return_val_if_fail(jobj != NULL, NULL);
@@ -289,46 +170,71 @@ gboolean muse_core_msg_json_deserialize(
 		const char *key, char* buf, int *parse_len, void *data,
 		muse_core_msg_parse_err_e *err, muse_core_type_e m_type)
 {
-	enum json_tokener_error jerr = json_tokener_error_size;
+	int j_type;
+	json_object *val, *jobj;
 
 	g_return_val_if_fail(key != NULL, FALSE);
 	g_return_val_if_fail(buf != NULL, FALSE);
 	g_return_val_if_fail(data != NULL, FALSE);
 
-	_muse_core_msg_json_init(); /* muse core object */
+	jobj = _muse_core_msg_json_tokener_parse_len(buf, parse_len, err);
+	g_return_val_if_fail(jobj != NULL, FALSE);
 
-	if (strcmp(key, MUSE_API) == 0) {
-		g_muse_core_msg_json->jso = _muse_core_msg_json_tokener_parse_len(buf, &jerr, err);
-		if (g_muse_core_msg_json->jso) LOGD("created json_object: %p", g_muse_core_msg_json->jso);
-	} else {
-		LOGD("reuse json_object: %p", g_muse_core_msg_json->jso);
-	}
-
-	if (g_muse_core_msg_json->jso) {
-		if (parse_len)
-			*parse_len = g_muse_core_msg_json->parsed_len;
-		else
-			g_muse_core_msg_json->parsed_len = 0;
-
-		_muse_core_msg_json_get_object_value(key, data, m_type);
-		return TRUE;
-	} else {
+	val = _muse_core_msg_json_find_obj(jobj, key);
+	if (!val) {
+		LOGE("\"%s\" key is not founded", key);
 		return FALSE;
 	}
-}
 
-void muse_core_msg_json_object_free(void)
-{
-	if (g_muse_core_msg_json->jso) {
-		LOGD("json_object_put");
-		json_object_put(g_muse_core_msg_json->jso);
+	j_type = json_object_get_type(val);
+	switch (j_type) {
+	case json_type_null:
+		LOGD("json_type_null\n");
+		break;
+	case json_type_boolean:
+		LOGD("json_type_boolean (%s)          value: %d", key, json_object_get_boolean(val));
+		break;
+	case json_type_double:
+		*(double *)data = json_object_get_double(val);
+		LOGD("json_type_double (%s)          value: %p", key, (double *)data);
+		break;
+	case json_type_int:
+		if (m_type == MUSE_TYPE_ANY || m_type == MUSE_TYPE_INT) {
+			*(int32_t *)data = json_object_get_int(val);
+			LOGD("json_type_int (%s)          value: %d", key, *(int32_t *)data);
+		} else if (m_type == MUSE_TYPE_INT64) {
+			*(int64_t *)data = json_object_get_int64(val);
+			LOGD("json_type_int (%s)          value: %" G_GINT64_FORMAT "", key, *(int64_t *)data);
+		} else if (m_type == MUSE_TYPE_POINTER) {
+			if (sizeof(intptr_t) == 8)
+				*(intptr_t *)data = json_object_get_int64(val);
+			else
+				*(intptr_t *)data = json_object_get_int(val);
+			LOGD("json_type_int (%s)          value: %p", key, *(intptr_t *)data);
+		} else if (m_type == MUSE_TYPE_DOUBLE) {
+			*(double *)data = json_object_get_double(val);
+			LOGD("json_type_double (%s)          value: %.20lf", key, *(double *)data);
+		}
+		break;
+	case json_type_object:
+		LOGD("json_type_object (%s)          value: %d", key, json_object_get_object(val));
+		break;
+	case json_type_string:
+		strncpy((char *)data, json_object_get_string(val), strlen(json_object_get_string(val)));
+		LOGD("json_type_string (%s)          value: %s", key, (char *)data);
+		break;
+	case json_type_array:
+		LOGD("json_type_array (%s)", key);
+		int i, len;
+		int *int_data = (int *)data;
+		LOGD("array length: %d", len = json_object_array_length(val));
+		for (i = 0; i < len; i++)
+			int_data[i] = json_object_get_int(json_object_array_get_idx(val, i));
+		break;
+	default:
+		LOGW("type is not yet implemented");
+		break;
 	}
-
-	if (g_muse_core_msg_json->tok) {
-		LOGD("json_tokener_free");
-		json_tokener_free(g_muse_core_msg_json->tok);
-	}
-
-	MUSE_FREE(g_muse_core_msg_json);
-
+	json_object_put(jobj);
+	return TRUE;
 }
