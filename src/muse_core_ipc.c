@@ -65,7 +65,6 @@ static void _muse_core_ipc_client_cleanup(muse_module_h module)
 	g_mutex_clear(&module->ch[MUSE_CHANNEL_DATA].mutex);
 	g_cond_clear(&module->ch[MUSE_CHANNEL_DATA].cond);
 	LOGD("worker exit");
-	muse_core_msg_json_object_free();
 	muse_core_worker_exit(module);
 }
 
