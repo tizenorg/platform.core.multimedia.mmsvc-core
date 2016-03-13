@@ -50,11 +50,14 @@ typedef enum {
 	MUSE_MSG_PARSE_ERROR_MAX
 } muse_core_msg_parse_err_e;
 
-char * muse_core_msg_json_factory_new(int api, ...);
+char *muse_core_msg_json_factory_new(int api, ...);
 void muse_core_msg_json_factory_free(char * msg);
 gboolean muse_core_msg_json_deserialize(
 		const char *key, char* buf, int *parse_len, void *data,
 		muse_core_msg_parse_err_e *err, muse_core_type_e m_type);
+void *muse_core_msg_json_object_new(char *str, int *parse_len, muse_core_msg_parse_err_e *err);
+gboolean muse_core_msg_json_object_get_value(const char *key, void *jobj, void *data, muse_core_type_e m_type);
+void muse_core_msg_json_object_free(void *jobj);
 
 #ifdef __cplusplus
 }
