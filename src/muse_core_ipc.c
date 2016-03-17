@@ -233,7 +233,7 @@ static muse_recv_data_t *_muse_core_ipc_new_qdata(char **recvBuff, int recvSize,
 	}
 	qDataSize = qData->header.size + sizeof(muse_recv_data_head_t);
 	if (qDataSize > recvSize) {
-		LOGD("not complated recv");
+		LOGD("recv is not completed");
 		if (qDataSize > *allocSize) {
 			LOGD("Realloc %d -> %d", *allocSize, qDataSize);
 			*allocSize = qDataSize;

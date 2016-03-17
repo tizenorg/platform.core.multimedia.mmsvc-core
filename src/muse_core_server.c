@@ -87,6 +87,7 @@ int main(int argc, char **argv)
 	int result;
 	pid_t pid, sid;
 	int index;
+	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 
 	_muse_core_server_setup_syslog();
 	muse_core_config_init();
@@ -116,7 +117,7 @@ int main(int argc, char **argv)
 	}
 
 	if ((pid = fork()) < 0) {
-		LOGE("Error: fork() failed: %s", strerror (errno));
+		LOGE("Error: fork() failed: %s", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
 		exit(0);
 	} else if (pid != 0) {
 		exit(0);

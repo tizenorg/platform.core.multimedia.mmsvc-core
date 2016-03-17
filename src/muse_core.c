@@ -294,8 +294,7 @@ static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition c
 	LOGD("Leave");
 	return TRUE;
 out:
-	if (client_sockfd)
-		close(client_sockfd);
+	close(client_sockfd);
 	MUSE_FREE(module);
 	MUSE_FREE(job);
 

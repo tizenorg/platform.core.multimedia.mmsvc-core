@@ -68,7 +68,7 @@ extern "C" {
 
 #define READ		0x02
 #define PERSIST	0x10
-#define MAX_ERROR_MSG_LEN	128
+#define MAX_ERROR_MSG_LEN	256
 
 #define DISPATCHER "dispatcher"
 #define CMD_DISPATCHER "cmd_dispatcher"
