@@ -29,7 +29,7 @@
 #include "muse_core_module.h"
 
 typedef struct muse_recv_data_head {
-	int marker;
+	unsigned int marker;
 	int id;
 	int size;
 } muse_recv_data_head_t;
@@ -83,7 +83,8 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 		memset(module->recvMsg, 0x00, sizeof(module->recvMsg));
 		len = muse_core_ipc_recv_msg(module->ch[MUSE_CHANNEL_MSG].fd, module->recvMsg);
 		if (len <= 0) {
-			LOGE("recv : %s (%d)", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN), errno);
+			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+			LOGE("recv : %s (%d)", err_msg, errno);
 			muse_core_cmd_dispatch(module, MUSE_MODULE_EVENT_SHUTDOWN);
 			_muse_core_ipc_client_cleanup(module);
 		} else {
@@ -174,7 +175,8 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 		currLen += recvLen;
 		LOGD("buff %p, recvLen %d, currLen %d, allocSize %d", recvBuff, recvLen, currLen, allocSize);
 		if (recvLen <= 0) {
-			LOGE("[%d] recv : %s (%d)", fd, strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN), errno);
+			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+			LOGE("[%d] recv : %s (%d)", fd, err_msg, errno);
 			break;
 		} else {
 			if (module) {
@@ -358,10 +360,12 @@ int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	g_return_val_if_fail(msg != NULL, MM_ERROR_INVALID_ARGUMENT);
 
-	if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0)
-		LOGE("fail to receive msg (%s)", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
-	else
+	if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("fail to receive msg (%s)", err_msg);
+	} else {
 		msg[ret] = '\0';
+	}
 
 	LOGD("[strlen: %d] %s", ret, msg);
 	return ret;

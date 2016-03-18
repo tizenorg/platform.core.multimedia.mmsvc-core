@@ -31,10 +31,9 @@
 
 #define MUSE_LOG_SLEEP_TIMER 10
 
-static muse_core_t *server;
 static GMainLoop *g_loop;
 static GThread *g_thread;
-static char *UDS_files[MUSE_CHANNEL_MAX] = {SOCKFILE0, SOCKFILE1};
+static const char *UDS_files[MUSE_CHANNEL_MAX] = {SOCKFILE0, SOCKFILE1};
 
 static gboolean (*job_functions[MUSE_CHANNEL_MAX])
 	(muse_core_workqueue_job_t *job) = {
@@ -57,7 +56,8 @@ static int _muse_core_set_nonblocking(int fd, bool value)
 		flags = value ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
 
 		if (fcntl(fd, F_SETFL, flags) == -1) {
-			LOGE("fcntl (%d, F_SETFL) %s", fd, strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
+			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+			LOGE("fcntl (%d, F_SETFL) %s", fd, err_msg);
 			return -1;
 		} else {
 			LOGD("fcntl (%d, F_SETFL)", fd);
@@ -202,7 +202,8 @@ int _muse_core_server_new(muse_core_channel_e channel)
 	/* Create Socket */
 	fd = socket(AF_UNIX, SOCK_STREAM, 0); /* Unix Domain Socket */
 	if (fd < 0) {
-		LOGE("socket failed sock: %s", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("socket failed sock: %s", err_msg);
 		return -1;
 	} else {
 		LOGD("fd: %d", fd);
@@ -222,7 +223,8 @@ int _muse_core_server_new(muse_core_channel_e channel)
 		}
 
 		if (bind(fd, (struct sockaddr *)&addr_un, sizeof(addr_un)) != 0)
-			LOGE("bind failed sock: %s", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
+			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+			LOGE("bind failed sock: %s", err_msg);
 		close(fd);
 		return -1;
 	}
@@ -262,10 +264,12 @@ static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition c
 
 	if (client_sockfd < 0) {
 		LOGE("failed to accept");
-		if (errno == EWOULDBLOCK || errno == ECONNABORTED)
+		if (errno == EWOULDBLOCK || errno == ECONNABORTED) {
 			return FALSE;
-		else
-			LOGE("accept: %s\n", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
+		} else {
+			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+			LOGE("accept: %s\n", err_msg);
+		}
 	}
 
 	if (channel == MUSE_CHANNEL_MSG) {
@@ -315,12 +319,14 @@ static int _muse_core_client_new(muse_core_channel_e channel)
 
 	/*Create socket*/
 	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		LOGE("[socket failure] sock: %s", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("[socket failure] sock: %s", err_msg);
 		return ret;
 	} else {
 		LOGD("sockfd: %d", sockfd);
 		if (fcntl(sockfd, F_SETFD, FD_CLOEXEC) < 0) {
-			LOGE("unable to set on ctrls socket fd %d: %s", sockfd, strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
+			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+			LOGE("unable to set on ctrls socket fd %d: %s", sockfd, err_msg);
 			(void) close(sockfd);
 			return -1;
 		}
@@ -386,6 +392,7 @@ muse_core_t *muse_core_new()
 int muse_core_run()
 {
 	int ret = -1;
+	muse_core_t *server;
 	GMainContext *context;
 
 	LOGD("Enter");

@@ -54,12 +54,13 @@ static void _muse_core_log_sig_abort(int signo)
 {
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	if (SIG_ERR == signal(SIGABRT, SIG_DFL))
-		LOGE("SIGABRT handler: %s", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("SIGABRT handler: %s", err_msg);
 
 	static char client_name[256];
 	memset(client_name, '\0', sizeof(client_name));
 	snprintf(client_name, sizeof(client_name) - 1, "[client name] %s", muse_core_config_get_instance()->get_host(muse_core_module_get_instance()->api_module));
-	if (write(g_muse_core_log->log_fd, client_name, strlen(client_name)) != strlen(client_name))
+	if (write(g_muse_core_log->log_fd, client_name, strlen(client_name)) != (int)strlen(client_name))
 		LOGE("There was an error writing client name to logfile");
 	else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
 		LOGE("write %s", client_name);
@@ -67,7 +68,7 @@ static void _muse_core_log_sig_abort(int signo)
 	static char client_pid[256];
 	memset(client_pid, '\0', sizeof(client_pid));
 	snprintf(client_pid, sizeof(client_pid) - 1, "[client pid] %lu", (unsigned long) getpid());
-	if (write(g_muse_core_log->log_fd, client_pid, strlen(client_pid)) != strlen(client_pid))
+	if (write(g_muse_core_log->log_fd, client_pid, strlen(client_pid)) != (int)strlen(client_pid))
 		LOGE("There was an error writing client pid to logfile");
 	else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
 		LOGE("write %s", client_pid);
@@ -76,7 +77,7 @@ static void _muse_core_log_sig_abort(int signo)
 	memset(latest_called_api, '\0', sizeof(latest_called_api));
 	snprintf(latest_called_api, sizeof(latest_called_api) - 1, "[client's latest called api] %s", _muse_core_log_get_msg());
 
-	if (write(g_muse_core_log->log_fd, latest_called_api, strlen(latest_called_api)) != strlen(latest_called_api))
+	if (write(g_muse_core_log->log_fd, latest_called_api, strlen(latest_called_api)) != (int)strlen(latest_called_api))
 		LOGE("There was an error writing client's latest called api to logfile");
 	else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
 		LOGE("write %s", latest_called_api);
@@ -129,8 +130,10 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 	LOGE("----------BEGIN MUSE DYING MESSAGE----------");
 
 	tracesize = backtrace(trace, TUNABLE_CALLER_DEPTH);
-	if (tracesize < 0)
-		LOGE("backtrace error: %s", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
+	if (tracesize < 0) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("backtrace error: %s", err_msg);
+	}
 
 	uctxt = (ucontext_t *) arg;
 
@@ -146,7 +149,8 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 	#endif
 	strings = backtrace_symbols(trace, tracesize);
 	if (strings == NULL) {
-		LOGE("backtrace_symbols error: %s", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("backtrace_symbols error: %s", err_msg);
 	} else {
 		/* skip the first stack frame because it just points here. */
 		for (i = 1; i < tracesize; ++i) {
@@ -210,8 +214,10 @@ static void _muse_core_log_set_log_fd(void)
 
 	_muse_core_log_create_fd();
 
-	if (fcntl(g_muse_core_log->log_fd, F_SETFD, FD_CLOEXEC) < 0)
-		LOGE("unable to set CLO_EXEC on log fd %d: %s", g_muse_core_log->log_fd, strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
+	if (fcntl(g_muse_core_log->log_fd, F_SETFD, FD_CLOEXEC) < 0) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("unable to set CLO_EXEC on log fd %d: %s", g_muse_core_log->log_fd, err_msg);
+	}
 
 	(void) _muse_core_log_fd_set_block(g_muse_core_log->log_fd);
 }
@@ -261,7 +267,7 @@ static void _muse_core_log_monitor(char *msg)
 	if (strlen(g_muse_core_log->cache) + strlen(msg) < WRITE_DEFAULT_BLOCK_SIZE) {
 		_muse_core_log_write_buffer(msg, strlen(msg));
 	} else {
-		if (write(g_muse_core_log->log_fd, g_muse_core_log->cache, strlen(g_muse_core_log->cache)) == strlen(g_muse_core_log->cache)) {
+		if (write(g_muse_core_log->log_fd, g_muse_core_log->cache, strlen(g_muse_core_log->cache)) == (int)strlen(g_muse_core_log->cache)) {
 			memset(g_muse_core_log->cache, 0, WRITE_DEFAULT_BLOCK_SIZE);
 			_muse_core_log_write_buffer(msg, strlen(msg));
 		} else {
@@ -301,7 +307,7 @@ static char *_muse_core_log_get_msg(void)
 
 static void _muse_core_log_flush_msg(void)
 {
-	if (write(g_muse_core_log->log_fd, g_muse_core_log->cache, strlen(g_muse_core_log->cache)) != strlen(g_muse_core_log->cache))
+	if (write(g_muse_core_log->log_fd, g_muse_core_log->cache, strlen(g_muse_core_log->cache)) != (int)strlen(g_muse_core_log->cache))
 		LOGE("There was an error writing to logfile");
 }
 
