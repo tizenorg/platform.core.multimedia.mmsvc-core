@@ -31,10 +31,9 @@
 
 #define MUSE_LOG_SLEEP_TIMER 10
 
-static muse_core_t *server;
 static GMainLoop *g_loop;
 static GThread *g_thread;
-static char *UDS_files[MUSE_CHANNEL_MAX] = {SOCKFILE0, SOCKFILE1};
+static const char *UDS_files[MUSE_CHANNEL_MAX] = {SOCKFILE0, SOCKFILE1};
 
 static gboolean (*job_functions[MUSE_CHANNEL_MAX])
 	(muse_core_workqueue_job_t *job) = {
@@ -386,6 +385,7 @@ muse_core_t *muse_core_new()
 int muse_core_run()
 {
 	int ret = -1;
+	muse_core_t *server;
 	GMainContext *context;
 
 	LOGD("Enter");

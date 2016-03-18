@@ -29,7 +29,7 @@
 #include "muse_core_module.h"
 
 typedef struct muse_recv_data_head {
-	int marker;
+	unsigned int marker;
 	int id;
 	int size;
 } muse_recv_data_head_t;
