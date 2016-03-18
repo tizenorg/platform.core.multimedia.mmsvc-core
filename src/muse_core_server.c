@@ -117,7 +117,8 @@ int main(int argc, char **argv)
 	}
 
 	if ((pid = fork()) < 0) {
-		LOGE("Error: fork() failed: %s", strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN));
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("Error: fork() failed: %s", err_msg);
 		exit(0);
 	} else if (pid != 0) {
 		exit(0);
