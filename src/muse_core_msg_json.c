@@ -183,6 +183,7 @@ gboolean muse_core_msg_json_deserialize(
 	val = _muse_core_msg_json_find_obj(jobj, key);
 	if (!val) {
 		LOGE("\"%s\" key is not founded", key);
+		json_object_put(jobj);
 		return FALSE;
 	}
 

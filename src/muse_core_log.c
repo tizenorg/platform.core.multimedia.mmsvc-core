@@ -53,9 +53,10 @@ static void _muse_core_log_flush_msg(void);
 static void _muse_core_log_sig_abort(int signo)
 {
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
-	if (SIG_ERR == signal(SIGABRT, SIG_DFL))
+	if (SIG_ERR == signal(SIGABRT, SIG_DFL)) {
 		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
 		LOGE("SIGABRT handler: %s", err_msg);
+	}
 
 	static char client_name[256];
 	memset(client_name, '\0', sizeof(client_name));

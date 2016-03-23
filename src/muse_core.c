@@ -255,7 +255,6 @@ static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition c
 	muse_module_h module = NULL;
 	muse_core_workqueue_job_t *job = NULL;
 
-
 	server_sockfd = g_io_channel_unix_get_fd(source);
 
 	client_len = sizeof(client_address);
@@ -263,13 +262,9 @@ static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition c
 	LOGD("server: %d client: %d", server_sockfd, client_sockfd);
 
 	if (client_sockfd < 0) {
-		LOGE("failed to accept");
-		if (errno == EWOULDBLOCK || errno == ECONNABORTED) {
-			return FALSE;
-		} else {
-			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
-			LOGE("accept: %s\n", err_msg);
-		}
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("accept: %s\n", err_msg);
+		return FALSE;
 	}
 
 	if (channel == MUSE_CHANNEL_MSG) {
