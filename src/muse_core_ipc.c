@@ -85,7 +85,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 		if (len <= 0) {
 			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
 			LOGE("recv : %s (%d)", err_msg, errno);
-			muse_core_cmd_dispatch(module, MUSE_MODULE_EVENT_SHUTDOWN);
+			muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_SHUTDOWN);
 			_muse_core_ipc_client_cleanup(module);
 		} else {
 			parse_len = len;
@@ -105,6 +105,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 							module->api_module = api_module;
 							module->is_create_api_called = true;
 							module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_get_instance()->load(api_module);
+							muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_INITIALIZE);
 							module->ch[MUSE_CHANNEL_DATA].queue = g_queue_new();
 							g_mutex_init(&module->ch[MUSE_CHANNEL_DATA].mutex);
 							LOGD("module fd: %d dll_handle: %p", module->ch[MUSE_CHANNEL_MSG].fd, module->ch[MUSE_CHANNEL_MSG].dll_handle);
@@ -123,6 +124,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 							if (muse_core_msg_json_deserialize(MUSE_MODULE, module->recvMsg + module->msg_offset, &parse_len, &api_module, &err, MUSE_TYPE_INT)) {
 								module->api_module = api_module;
 								module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_get_instance()->load(api_module);
+								muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_INITIALIZE);
 								module->ch[MUSE_CHANNEL_DATA].queue = g_queue_new();
 								g_mutex_init(&module->ch[MUSE_CHANNEL_DATA].mutex);
 							}
@@ -181,8 +183,7 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 		} else {
 			if (module) {
 				muse_recv_data_t *qData;
-				while ((qData = _muse_core_ipc_new_qdata(&recvBuff, currLen, &allocSize))
-						!= NULL) {
+				while ((qData = _muse_core_ipc_new_qdata(&recvBuff, currLen, &allocSize)) != NULL) {
 					int qDataSize = qData->header.size + sizeof(muse_recv_data_head_t);
 					if (currLen > qDataSize) {
 						allocSize = allocSize - qDataSize;
@@ -344,13 +345,17 @@ gboolean muse_core_ipc_data_job_function(muse_core_workqueue_job_t *job)
 int muse_core_ipc_send_msg(int sock_fd, const char *msg)
 {
 	int ret = MM_ERROR_NONE;
+	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 
 	g_return_val_if_fail(msg != NULL, MM_ERROR_INVALID_ARGUMENT);
 
-	if ((ret = send(sock_fd, msg, strlen(msg), 0)) < 0)
-		LOGE("send msg failed");
+	if ((ret = send(sock_fd, msg, strlen(msg), 0)) < 0) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("fail to send msg (%s)", err_msg);
+	} else {
+		LOGD("[strlen: %d] %s", ret, msg);
+	}
 
-	LOGD("[strlen: %d] %s", ret, msg);
 	return ret;
 }
 
@@ -363,12 +368,23 @@ int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 	if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0) {
 		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
 		LOGE("fail to receive msg (%s)", err_msg);
-	} else {
+	} else if (ret > 0) {
 		msg[ret] = '\0';
+		LOGD("[strlen: %d] %s", ret, msg);
 	}
 
-	LOGD("[strlen: %d] %s", ret, msg);
 	return ret;
+}
+
+void muse_core_ipc_set_timeout(int sock_fd, unsigned long timeout_sec)
+{
+	LOGD("Enter");
+	struct timeval tv;
+	tv.tv_sec  = timeout_sec;
+	tv.tv_usec = 0L;
+
+	setsockopt(sock_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(tv));
+	LOGD("Leave");
 }
 
 int muse_core_ipc_push_data(int sock_fd, const char *data, int size, int data_id)
