@@ -45,31 +45,10 @@ typedef enum {
 	API_MAX
 } muse_core_api_type_e;
 
-/**
- * @brief Create and send address of server side client infomation structure.
- * @remarks Does NOT guarantee thread safe.
- * @param[in] client The server side client infomation.
- * @param[in] fd socket fd
- */
-#define muse_core_send_client_addr(module, fd) \
-	do {\
-		char *__sndMsg__; \
-		int __len__; \
-		__sndMsg__ = muse_core_msg_json_factory_new(0, \
-				MUSE_TYPE_POINTER, #module, module, \
-				0); \
-		__len__ = muse_core_ipc_send_msg(fd, __sndMsg__); \
-		muse_core_msg_json_factory_free(__sndMsg__); \
-		if (__len__ <= 0) { \
-			LOGE("sending message failed"); \
-			return PLAYER_ERROR_INVALID_OPERATION; \
-		} \
-	} while (0)
-
 gboolean muse_core_ipc_job_function(struct muse_core_workqueue_job * job);
 int muse_core_ipc_send_msg(int sock_fd, const char *msg);
 int muse_core_ipc_recv_msg(int sock_fd, char *msg);
-
+void muse_core_ipc_set_timer(int sock_fd, unsigned long timeout_sec);
 gboolean muse_core_ipc_data_job_function(muse_core_workqueue_job_t * job);
 int muse_core_ipc_push_data(int sock_fd, const char *data, int size, int data_id);
 char *muse_core_ipc_get_data(muse_module_h module);

@@ -32,13 +32,14 @@ extern "C" {
 typedef struct muse_module * muse_module_h;
 
 typedef enum {
-	MUSE_MODULE_EVENT_SHUTDOWN = 0,
-	MUSE_MODULE_EVENT_DEBUG_INFO_DUMP,
-	MUSE_MODULE_EVENT_MAX
-} muse_module_event_e;
+	MUSE_MODULE_COMMAND_INITIALIZE = 0,
+	MUSE_MODULE_COMMAND_SHUTDOWN,
+	MUSE_MODULE_COMMAND_DEBUG_INFO_DUMP,
+	MUSE_MODULE_COMMAND_MAX
+} muse_module_command_e;
 
 int muse_core_run(void);
-void muse_core_cmd_dispatch(muse_module_h module, muse_module_event_e ev);
+void muse_core_cmd_dispatch(muse_module_h module, muse_module_command_e cmd);
 void muse_core_connection_close(int sock_fd);
 int muse_core_client_new(void);
 int muse_core_client_new_data_ch(void);
