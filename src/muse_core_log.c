@@ -85,8 +85,13 @@ static void _muse_core_log_sig_abort(int signo)
 
 	muse_core_workqueue_get_instance()->shutdown();
 	muse_core_ipc_get_instance()->deinit();
-	LOGD("abort signal");
-	abort();
+	if (signo == SIGABRT || signo == SIGSEGV) {
+		LOGD("abort signal");
+		abort();
+	} else {
+		LOGD("raise(%d)", signo);
+		raise(signo);
+	}
 }
 
 static void _muse_core_log_init_signals(void)
