@@ -189,7 +189,6 @@ static int _muse_core_free(muse_core_t *server)
 int _muse_core_server_new(muse_core_channel_e channel)
 {
 	int fd;
-	struct sockaddr *address;
 	struct sockaddr_un addr_un;
 	socklen_t address_len;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
@@ -213,18 +212,13 @@ int _muse_core_server_new(muse_core_channel_e channel)
 	addr_un.sun_family = AF_UNIX;
 	strncpy(addr_un.sun_path, UDS_files[channel], sizeof(addr_un.sun_path));
 	address_len = sizeof(addr_un);
-	address = (struct sockaddr *)(&addr_un);
 
 	/* Bind to filename */
-	if (bind(fd, address, address_len) < 0) {
-		if (errno == EADDRINUSE) {
-			LOGE("%d is address in using so remove the file of %s", fd, addr_un.sun_path);
+	if (bind(fd, (struct sockaddr *)&addr_un, sizeof(addr_un)) < 0) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("bind failed sock: %s", err_msg);
+		if (errno == EADDRINUSE)
 			unlink(addr_un.sun_path);
-		}
-
-		if (bind(fd, (struct sockaddr *)&addr_un, sizeof(addr_un)) != 0)
-			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
-			LOGE("bind failed sock: %s", err_msg);
 		close(fd);
 		return -1;
 	}
@@ -338,8 +332,7 @@ static int _muse_core_client_new(muse_core_channel_e channel)
 
 	if ((ret = connect(sockfd, (struct sockaddr *)&address, len)) < 0) {
 		LOGE("connect failure");
-		if (sockfd)
-			(void) close(sockfd);
+		(void) close(sockfd);
 		return ret;
 	}
 
@@ -425,7 +418,7 @@ int muse_core_run()
 	return _muse_core_free(server);
 }
 
-void muse_core_cmd_dispatch(muse_module_h module, muse_module_event_e ev)
+void muse_core_cmd_dispatch(muse_module_h module, muse_module_command_e cmd)
 {
 	muse_module_cmd_dispatchfunc *cmd_dispatcher = NULL;
 
@@ -433,9 +426,9 @@ void muse_core_cmd_dispatch(muse_module_h module, muse_module_event_e ev)
 
 	g_module_symbol(module->ch[MUSE_CHANNEL_MSG].dll_handle, CMD_DISPATCHER, (gpointer *)&cmd_dispatcher);
 
-	if (cmd_dispatcher && cmd_dispatcher[ev]) {
+	if (cmd_dispatcher && cmd_dispatcher[cmd]) {
 		LOGD("cmd_dispatcher: %p", cmd_dispatcher);
-		cmd_dispatcher[ev](module);
+		cmd_dispatcher[cmd](module);
 	} else {
 		LOGE("error - cmd_dispatcher");
 		return;
