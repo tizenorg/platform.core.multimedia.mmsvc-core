@@ -32,7 +32,8 @@ extern "C" {
 typedef struct muse_module * muse_module_h;
 
 typedef enum {
-	MUSE_MODULE_EVENT_SHUTDOWN = 0,
+	MUSE_MODULE_EVENT_INITIALIZE = 0,
+	MUSE_MODULE_EVENT_SHUTDOWN,
 	MUSE_MODULE_EVENT_DEBUG_INFO_DUMP,
 	MUSE_MODULE_EVENT_MAX
 } muse_module_event_e;

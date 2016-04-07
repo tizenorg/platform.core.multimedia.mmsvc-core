@@ -222,9 +222,10 @@ int _muse_core_server_new(muse_core_channel_e channel)
 			unlink(addr_un.sun_path);
 		}
 
-		if (bind(fd, (struct sockaddr *)&addr_un, sizeof(addr_un)) != 0)
+		if (bind(fd, (struct sockaddr *)&addr_un, sizeof(addr_un)) != 0) {
 			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
 			LOGE("bind failed sock: %s", err_msg);
+		}
 		close(fd);
 		return -1;
 	}
@@ -338,8 +339,7 @@ static int _muse_core_client_new(muse_core_channel_e channel)
 
 	if ((ret = connect(sockfd, (struct sockaddr *)&address, len)) < 0) {
 		LOGE("connect failure");
-		if (sockfd)
-			(void) close(sockfd);
+		(void) close(sockfd);
 		return ret;
 	}
 

@@ -263,7 +263,6 @@ gboolean muse_core_msg_json_deserialize(
 void *muse_core_msg_json_object_new(char *str, int *parse_len, muse_core_msg_parse_err_e *err)
 {
 	struct json_object *obj;
-	enum json_tokener_error jerr = json_tokener_success;
 
 	g_return_val_if_fail(str != NULL, NULL);
 
