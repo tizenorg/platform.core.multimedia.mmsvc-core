@@ -30,7 +30,7 @@
 
 typedef struct muse_recv_data_head {
 	unsigned int marker;
-	int id;
+	uint64_t id;
 	int size;
 } muse_recv_data_head_t;
 
@@ -387,7 +387,7 @@ void muse_core_ipc_set_timeout(int sock_fd, unsigned long timeout_sec)
 	LOGD("Leave");
 }
 
-int muse_core_ipc_push_data(int sock_fd, const char *data, int size, int data_id)
+int muse_core_ipc_push_data(int sock_fd, const char *data, int size, uint64_t data_id)
 {
 	int ret = MM_ERROR_NONE;
 
