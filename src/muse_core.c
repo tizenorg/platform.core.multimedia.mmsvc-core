@@ -119,6 +119,8 @@ static bool _muse_core_attach_server(int fd, muse_module_callback callback, gpoi
 	if (!channel)
 		return false;
 
+	g_io_channel_init(channel); /* called when you are creating a new type of GIOChannel */
+
 	src = g_io_create_watch(channel, G_IO_IN);
 	if (!src) {
 		g_io_channel_unref(channel);
@@ -129,6 +131,8 @@ static bool _muse_core_attach_server(int fd, muse_module_callback callback, gpoi
 	g_source_set_callback(src, (GSourceFunc) callback, param, NULL);
 	g_source_attach(src, g_main_loop_get_context(g_loop));
 	g_source_unref(src);
+
+	g_io_channel_unref(channel);
 
 	return true;
 }
@@ -154,6 +158,8 @@ static muse_core_t *_muse_core_create_new_server_from_fd(int fd[], int type)
 	for (i = 0; i < MUSE_CHANNEL_MAX; i++) {
 		if (!_muse_core_attach_server(fd[i], _muse_core_connection_handler, (gpointer)(intptr_t) i)) {
 			LOGD("Fail to attach server fd %d", fd[i]);
+			muse_core_client_close(server->fd);
+			muse_core_client_close(server->data_fd);
 			MUSE_FREE(server);
 			return NULL;
 		}
@@ -189,6 +195,7 @@ static int _muse_core_free(muse_core_t *server)
 int _muse_core_server_new(muse_core_channel_e channel)
 {
 	int fd;
+	int is_reuse = TRUE;
 	struct sockaddr_un addr_un;
 	socklen_t address_len;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
@@ -212,6 +219,14 @@ int _muse_core_server_new(muse_core_channel_e channel)
 	addr_un.sun_family = AF_UNIX;
 	strncpy(addr_un.sun_path, UDS_files[channel], sizeof(addr_un.sun_path));
 	address_len = sizeof(addr_un);
+
+	/* so we can restart our server quickly */
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &is_reuse, sizeof(is_reuse)) < 0 ) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("bind failed sock: %s", err_msg);
+		close(fd);
+		return -1;
+	}
 
 	/* Bind to filename */
 	if (bind(fd, (struct sockaddr *)&addr_un, sizeof(addr_un)) < 0) {
@@ -239,6 +254,7 @@ int _muse_core_server_new(muse_core_channel_e channel)
 static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition condition, gpointer data)
 {
 	int client_sockfd, server_sockfd;
+	int bufsize = 0;
 	socklen_t client_len;
 	struct sockaddr_un client_address;
 	muse_core_channel_e channel = (muse_core_channel_e)data;
@@ -253,12 +269,28 @@ static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition c
 
 	client_len = sizeof(client_address);
 	client_sockfd = accept(server_sockfd, (struct sockaddr *)&client_address, &client_len);
-	LOGD("server: %d client: %d", server_sockfd, client_sockfd);
 
 	if (client_sockfd < 0) {
 		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
 		LOGE("accept: %s\n", err_msg);
 		return FALSE;
+	}
+	LOGD("server: %d client: %d", server_sockfd, client_sockfd);
+
+	getsockopt(client_sockfd, SOL_SOCKET, SO_SNDBUF, (void *)&bufsize, &client_len);
+	bufsize = bufsize * 2;
+	LOGD("buffer size: %d", bufsize);
+
+	if (setsockopt(client_sockfd, SOL_SOCKET, SO_RCVBUF, (void *)&bufsize, sizeof(bufsize))) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("Failed to set SO_RCVBUF: %s", err_msg);
+		goto out;
+	}
+
+	if (setsockopt(client_sockfd, SOL_SOCKET, SO_SNDBUF, (void *)&bufsize, sizeof(bufsize))) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("Failed to set SO_SNDBUF: %s", err_msg);
+		goto out;
 	}
 
 	if (channel == MUSE_CHANNEL_MSG) {
@@ -295,7 +327,7 @@ out:
 	return FALSE;
 }
 
-static int _muse_core_client_new(muse_core_channel_e channel)
+static int _muse_core_client_open(muse_core_channel_e channel)
 {
 	struct sockaddr_un address;
 	int len, ret = -1;
@@ -431,18 +463,17 @@ void muse_core_cmd_dispatch(muse_module_h module, muse_module_command_e cmd)
 		cmd_dispatcher[cmd](module);
 	} else {
 		LOGE("error - cmd_dispatcher");
-		return;
 	}
 }
 
-int muse_core_client_new(void)
+int muse_core_client_open(void)
 {
-	return _muse_core_client_new(MUSE_CHANNEL_MSG);
+	return _muse_core_client_open(MUSE_CHANNEL_MSG);
 }
 
-int muse_core_client_new_data_ch(void)
+int muse_core_client_open_data_ch(void)
 {
-	return _muse_core_client_new(MUSE_CHANNEL_DATA);
+	return _muse_core_client_open(MUSE_CHANNEL_DATA);
 }
 
 int muse_core_client_get_msg_fd(muse_module_h module)
@@ -486,20 +517,26 @@ int muse_core_client_set_value(muse_module_h module, const char *value_name, int
 {
 	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
 	g_return_val_if_fail(value_name, MM_ERROR_INVALID_ARGUMENT);
-	muse_core_module_get_instance()->set_value(module->api_module, value_name, set_value);
+	muse_core_module_get_instance()->set_value(module->api_module, value_name, GINT_TO_POINTER(set_value));
 	return MM_ERROR_NONE;
 }
 
 int muse_core_client_get_value(muse_module_h module, const char *value_name, int *get_value)
 {
+	int ret = MM_ERROR_NONE;
+	gpointer value = 0;
+
 	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
 	g_return_val_if_fail(value_name, MM_ERROR_INVALID_ARGUMENT);
 	g_return_val_if_fail(get_value, MM_ERROR_INVALID_ARGUMENT);
 
-	return muse_core_module_get_instance()->get_value(module->api_module, value_name, get_value);
+	ret = muse_core_module_get_instance()->get_value(module->api_module, value_name, &value);
+	if (ret == MM_ERROR_NONE)
+		*get_value = GPOINTER_TO_INT(value);
+	return ret;
 }
 
-void muse_core_connection_close(int sock_fd)
+void muse_core_client_close(int sock_fd)
 {
 	if (sock_fd > 0) {
 		LOGD("[sock_fd: %d] shutdown", sock_fd);
@@ -513,8 +550,9 @@ void muse_core_worker_exit(muse_module_h module)
 	LOGD("Enter");
 	g_return_if_fail(module);
 
-	muse_core_connection_close(module->ch[MUSE_CHANNEL_MSG].fd);
-	muse_core_connection_close(module->ch[MUSE_CHANNEL_DATA].fd);
+	LOGD("close connection forcely");
+	muse_core_client_close(module->ch[MUSE_CHANNEL_MSG].fd);
+	muse_core_client_close(module->ch[MUSE_CHANNEL_DATA].fd);
 
 	g_return_if_fail(module->ch[MUSE_CHANNEL_MSG].p_gthread != NULL);
 	LOGD("%p thread exit\n", module->ch[MUSE_CHANNEL_MSG].p_gthread);

@@ -125,7 +125,7 @@ int muse_core_workqueue_init(int numWorkers)
 	g_workqueue = calloc(1, sizeof(muse_core_workqueue_workqueue_t));
 	if (!g_workqueue) {
 		LOGE("workqueue allocation failed");
-		return 1;
+		return MM_ERROR_INVALID_ARGUMENT;
 	}
 
 	if (numWorkers < 1)
@@ -138,14 +138,14 @@ int muse_core_workqueue_init(int numWorkers)
 		worker = malloc(sizeof(muse_core_workqueue_worker_t));
 		if (worker == NULL) {
 			LOGE("Failed to allocate all workers");
-			return 1;
+			return MM_ERROR_INVALID_ARGUMENT;
 		}
 		memset(worker, 0, sizeof(*worker));
 		worker->workqueue = g_workqueue;
 		if (pthread_create(&worker->thread, NULL, _muse_core_workqueue_worker_function, (void *)worker)) {
 			LOGE("Failed to start all worker threads");
 			MUSE_FREE(worker);
-			return 1;
+			return MM_ERROR_INVALID_ARGUMENT;
 		}
 		LL_ADD(worker, worker->workqueue->workers);
 	}
