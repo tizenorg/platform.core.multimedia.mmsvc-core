@@ -247,7 +247,7 @@ muse_core_config_t *muse_core_config_get_instance(void)
 {
 	if (g_muse_core_conf == NULL)
 		_muse_core_config_init_instance(_muse_core_config_free, _muse_core_config_get_path, _muse_core_config_get_preloaded, _muse_core_config_get_gst_param_cnt,
-		_muse_core_config_get_gst_param_str, _muse_core_config_get_host, _muse_core_config_get_host_cnt);
+					_muse_core_config_get_gst_param_str, _muse_core_config_get_host, _muse_core_config_get_host_cnt);
 
 	return g_muse_core_conf;
 }
@@ -257,6 +257,6 @@ void muse_core_config_init(void)
 	LOGD("Enter");
 	if (g_muse_core_conf == NULL)
 		_muse_core_config_init_instance(_muse_core_config_free, _muse_core_config_get_path, _muse_core_config_get_preloaded, _muse_core_config_get_gst_param_cnt,
-		_muse_core_config_get_gst_param_str, _muse_core_config_get_host, _muse_core_config_get_host_cnt);
+					_muse_core_config_get_gst_param_str, _muse_core_config_get_host, _muse_core_config_get_host_cnt);
 	LOGD("Leave");
 }

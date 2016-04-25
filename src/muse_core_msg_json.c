@@ -347,4 +347,5 @@ void muse_core_msg_json_object_free(void *jobj)
 {
 	g_return_if_fail(jobj != NULL);
 	json_object_put((json_object *)jobj);
+	jobj = NULL;
 }

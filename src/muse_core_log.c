@@ -61,6 +61,9 @@ static void _muse_core_log_sig_abort(int signo)
 	static char client_name[256];
 	memset(client_name, '\0', sizeof(client_name));
 	snprintf(client_name, sizeof(client_name) - 1, "[client name] %s", muse_core_config_get_instance()->get_host(muse_core_module_get_instance()->api_module));
+
+	g_return_if_fail(g_muse_core_log != NULL);
+
 	if (write(g_muse_core_log->log_fd, client_name, strlen(client_name)) != (int)strlen(client_name))
 		LOGE("There was an error writing client name to logfile");
 	else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
@@ -159,8 +162,8 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 		/* skip the first stack frame because it just points here. */
 		for (i = 1; i < tracesize; ++i) {
 			LOGE("[%u] %s", i - 1, strings[i]);
-			if (g_muse_core_log)
-				g_muse_core_log->fatal(strings[i]);
+			g_return_if_fail(g_muse_core_log != NULL);
+			g_muse_core_log->fatal(strings[i]);
 		}
 	}
 

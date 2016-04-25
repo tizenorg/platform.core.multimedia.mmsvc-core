@@ -66,11 +66,12 @@ static void _muse_core_ipc_client_cleanup(muse_module_h module)
 	g_cond_clear(&module->ch[MUSE_CHANNEL_DATA].cond);
 	LOGD("worker exit");
 	muse_core_worker_exit(module);
+
 }
 
 static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 {
-	int len, parse_len, cmd, api_module;
+	int len, parse_len, api_index, api_module;
 	muse_module_h module = NULL;
 	muse_core_msg_parse_err_e err = MUSE_MSG_PARSE_ERROR_NONE;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
@@ -90,16 +91,16 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 		} else {
 			parse_len = len;
 			LOGD("Message In");
-			cmd = 0;
+			api_index = 0;
 			api_module = 0;
 			module->msg_offset = 0;
 
 			muse_core_log_get_instance()->log(module->recvMsg);
 
 			while (module->msg_offset < len) {
-				if (muse_core_msg_json_deserialize(MUSE_API, module->recvMsg + module->msg_offset, &parse_len, &cmd, &err, MUSE_TYPE_INT)) {
-					switch (cmd) {
-					module->disp_api = cmd;
+				if (muse_core_msg_json_deserialize(MUSE_API, module->recvMsg + module->msg_offset, &parse_len, &api_index, &err, MUSE_TYPE_INT)) {
+					switch (api_index) {
+					module->disp_api = api_index;
 					case API_CREATE:
 						if (muse_core_msg_json_deserialize(MUSE_MODULE, module->recvMsg + module->msg_offset, &parse_len, &api_module, &err, MUSE_TYPE_INT)) {
 							module->api_module = api_module;
@@ -109,12 +110,12 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 							module->ch[MUSE_CHANNEL_DATA].queue = g_queue_new();
 							g_mutex_init(&module->ch[MUSE_CHANNEL_DATA].mutex);
 							LOGD("module fd: %d dll_handle: %p", module->ch[MUSE_CHANNEL_MSG].fd, module->ch[MUSE_CHANNEL_MSG].dll_handle);
-							muse_core_module_get_instance()->dispatch(cmd, module);
+							muse_core_module_get_instance()->dispatch(api_index, module);
 						}
 						break;
 					case API_DESTROY:
 						LOGD("DESTROY");
-						muse_core_module_get_instance()->dispatch(cmd, module);
+						muse_core_module_get_instance()->dispatch(api_index, module);
 						_muse_core_ipc_client_cleanup(module);
 						break;
 					default:
@@ -130,7 +131,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 							}
 						}
 						LOGD("[default] module's dll_handle: %p", module->ch[MUSE_CHANNEL_MSG].dll_handle);
-						muse_core_module_get_instance()->dispatch(cmd, module);
+						muse_core_module_get_instance()->dispatch(api_index, module);
 						if (module->is_create_api_called == false)
 							_muse_core_ipc_client_cleanup(module);
 						break;
@@ -349,11 +350,13 @@ int muse_core_ipc_send_msg(int sock_fd, const char *msg)
 
 	g_return_val_if_fail(msg != NULL, MM_ERROR_INVALID_ARGUMENT);
 
-	if ((ret = send(sock_fd, msg, strlen(msg), 0)) < 0) {
-		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
-		LOGE("fail to send msg (%s)", err_msg);
-	} else {
-		LOGD("[strlen: %d] %s", ret, msg);
+	if (fcntl(sock_fd, F_GETFD) != -1) {
+		if ((ret = send(sock_fd, msg, strlen(msg), 0)) < 0) {
+			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+			LOGE("fail to send msg (%s)", err_msg);
+		} else {
+			LOGD("[strlen: %d] %s", ret, msg);
+		}
 	}
 
 	return ret;
@@ -365,12 +368,14 @@ int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	g_return_val_if_fail(msg != NULL, MM_ERROR_INVALID_ARGUMENT);
 
-	if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0) {
-		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
-		LOGE("fail to receive msg (%s)", err_msg);
-	} else if (ret > 0) {
-		msg[ret] = '\0';
-		LOGD("[strlen: %d] %s", ret, msg);
+	if (fcntl(sock_fd, F_GETFD) != -1) {
+		if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0) {
+			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+			LOGE("fail to receive msg (%s)", err_msg);
+		} else if (ret > 0) {
+			msg[ret] = '\0';
+			LOGD("[strlen: %d] %s", ret, msg);
+		}
 	}
 
 	return ret;
@@ -391,6 +396,8 @@ int muse_core_ipc_push_data(int sock_fd, const char *data, int size, uint64_t da
 {
 	int ret = MM_ERROR_NONE;
 
+	LOGD("Enter");
+
 	muse_recv_data_head_t header;
 	g_return_val_if_fail(data != NULL, MM_ERROR_INVALID_ARGUMENT);
 
@@ -402,6 +409,8 @@ int muse_core_ipc_push_data(int sock_fd, const char *data, int size, uint64_t da
 		LOGE("fail to send msg");
 	if ((ret += send(sock_fd, data, size, 0)) < 0)
 		LOGE("fail to send msg");
+
+	LOGD("Leave");
 
 	return ret;
 }
