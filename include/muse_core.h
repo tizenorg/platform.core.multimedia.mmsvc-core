@@ -40,9 +40,9 @@ typedef enum {
 
 int muse_core_run(void);
 void muse_core_cmd_dispatch(muse_module_h module, muse_module_command_e cmd);
-void muse_core_connection_close(int sock_fd);
-int muse_core_client_new(void);
-int muse_core_client_new_data_ch(void);
+int muse_core_client_open(void);
+void muse_core_client_close(int sock_fd);
+int muse_core_client_open_data_ch(void);
 int muse_core_client_get_msg_fd(muse_module_h module);
 int muse_core_client_get_data_fd(muse_module_h module);
 void muse_core_client_set_cust_data(muse_module_h module, void *data);
