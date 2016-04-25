@@ -61,27 +61,30 @@ static void _muse_core_log_sig_abort(int signo)
 	static char client_name[256];
 	memset(client_name, '\0', sizeof(client_name));
 	snprintf(client_name, sizeof(client_name) - 1, "[client name] %s", muse_core_config_get_instance()->get_host(muse_core_module_get_instance()->api_module));
-	if (write(g_muse_core_log->log_fd, client_name, strlen(client_name)) != (int)strlen(client_name))
-		LOGE("There was an error writing client name to logfile");
-	else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
-		LOGE("write %s", client_name);
 
-	static char client_pid[256];
-	memset(client_pid, '\0', sizeof(client_pid));
-	snprintf(client_pid, sizeof(client_pid) - 1, "[client pid] %lu", (unsigned long) getpid());
-	if (write(g_muse_core_log->log_fd, client_pid, strlen(client_pid)) != (int)strlen(client_pid))
-		LOGE("There was an error writing client pid to logfile");
-	else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
-		LOGE("write %s", client_pid);
+	if (g_muse_core_log) {
+		if (write(g_muse_core_log->log_fd, client_name, strlen(client_name)) != (int)strlen(client_name))
+			LOGE("There was an error writing client name to logfile");
+		else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
+			LOGE("write %s", client_name);
 
-	static char latest_called_api[256];
-	memset(latest_called_api, '\0', sizeof(latest_called_api));
-	snprintf(latest_called_api, sizeof(latest_called_api) - 1, "[client's latest called api] %s", _muse_core_log_get_msg());
+		static char client_pid[256];
+		memset(client_pid, '\0', sizeof(client_pid));
+		snprintf(client_pid, sizeof(client_pid) - 1, "[client pid] %lu", (unsigned long) getpid());
+		if (write(g_muse_core_log->log_fd, client_pid, strlen(client_pid)) != (int)strlen(client_pid))
+			LOGE("There was an error writing client pid to logfile");
+		else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
+			LOGE("write %s", client_pid);
 
-	if (write(g_muse_core_log->log_fd, latest_called_api, strlen(latest_called_api)) != (int)strlen(latest_called_api))
-		LOGE("There was an error writing client's latest called api to logfile");
-	else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
-		LOGE("write %s", latest_called_api);
+		static char latest_called_api[256];
+		memset(latest_called_api, '\0', sizeof(latest_called_api));
+		snprintf(latest_called_api, sizeof(latest_called_api) - 1, "[client's latest called api] %s", _muse_core_log_get_msg());
+
+		if (write(g_muse_core_log->log_fd, latest_called_api, strlen(latest_called_api)) != (int)strlen(latest_called_api))
+			LOGE("There was an error writing client's latest called api to logfile");
+		else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
+			LOGE("write %s", latest_called_api);
+	}
 
 	muse_core_workqueue_get_instance()->shutdown();
 	muse_core_ipc_get_instance()->deinit();
