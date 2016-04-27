@@ -20,9 +20,11 @@ BuildRequires:  pkgconfig(libtbm)
 BuildRequires: pkgconfig(cynara-client)
 BuildRequires: pkgconfig(cynara-creds-socket)
 BuildRequires: pkgconfig(cynara-session)
+BuildRequires: pkgconfig(libtzplatform-config)
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
+Requires: security-config
 
 %description
 
@@ -48,7 +50,7 @@ export FFLAGS="$FFLAGS -DTIZEN_DEBUG_ENABLE -D_GNU_SOURCE"
 %endif
 
 MAJORVER=`echo %{version} | awk 'BEGIN {FS="."}{print $1}'`
-cmake . -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER} -DLIBDIR=%{_libdir}
+cmake . -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER} -DLIBDIR=%{_libdir} -DTZ_SYS_DATA_PATH=%TZ_SYS_DATA
 
 
 make %{?jobs:-j%jobs}
@@ -70,10 +72,16 @@ mkdir -p %{buildroot}%{_unitdir}/sockets.target.wants
 install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/muse-server.socket
 %install_service sockets.target.wants muse-server.socket
 
+mkdir -p %{buildroot}/var/log/%{name}
+mkdir -p -m 0770 %{buildroot}%{TZ_SYS_DATA}/%{name}
 
 %post
 /sbin/ldconfig
 
+chown multimedia_fw:multimedia_fw %{TZ_SYS_DATA}/%{name}
+chown multimedia_fw:multimedia_fw /var/log/%{name}
+chsmack -a "System::Shared" %{TZ_SYS_DATA}/%{name}
+chsmack -a "System::Shared" /var/log/%{name}
 %postun -p /sbin/ldconfig
 
 
@@ -86,6 +94,8 @@ install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/muse-server.socket
 %{_unitdir}/muse-server.socket
 %{_unitdir}/sockets.target.wants/muse-server.socket
 %{_datadir}/mused/mused.conf
+%{TZ_SYS_DATA}/%{name}
+/var/log/%{name}
 /usr/bin/*
 
 
