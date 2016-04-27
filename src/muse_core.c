@@ -29,6 +29,7 @@
 #include "muse_core_workqueue.h"
 #include "muse_core_security.h"
 
+#define MUSE_DATA_ROOT_PATH TZ_SYS_DATA_PATH"/mused/"
 #define MUSE_LOG_SLEEP_TIMER 10
 
 static GMainLoop *g_loop;
@@ -340,6 +341,23 @@ static int _muse_core_client_new(muse_core_channel_e channel)
 	return sockfd;
 }
 
+static void _muse_core_delete_invalid_items_in_dir(void)
+{
+	LOGD("Enter");
+	DIR *dp = opendir(MUSE_DATA_ROOT_PATH);
+	struct dirent *item;
+	if (dp) {
+		while (1) {
+			item = readdir(dp);
+			if (item == NULL)
+				break;
+			unlink(item->d_name);
+		}
+		closedir(dp);
+	}
+	LOGD("Leave");
+}
+
 gpointer muse_core_main_loop(gpointer data)
 {
 	#if 0
@@ -524,6 +542,7 @@ void muse_core_worker_exit(muse_module_h module)
 		g_thread_unref(module->ch[MUSE_CHANNEL_DATA].p_gthread);
 	MUSE_FREE(module);
 
+	_muse_core_delete_invalid_items_in_dir();
 	LOGD("Leave");
 	g_thread_exit(NULL);
 }
@@ -535,4 +554,9 @@ unsigned muse_core_get_atomic_uint(void)
 	g_atomic_int_inc(&atom);
 
 	return atom;
+}
+
+const char *muse_core_client_get_directory_path(void)
+{
+	return MUSE_DATA_ROOT_PATH;
 }
