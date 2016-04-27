@@ -23,6 +23,7 @@ BuildRequires: pkgconfig(cynara-session)
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
+Requires: security-config
 
 %description
 
@@ -70,10 +71,13 @@ mkdir -p %{buildroot}%{_unitdir}/sockets.target.wants
 install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/muse-server.socket
 %install_service sockets.target.wants muse-server.socket
 
+mkdir -p %{buildroot}/var/log/%{name}
 
 %post
 /sbin/ldconfig
 
+chown multimedia_fw:multimedia_fw /var/log/%{name}
+chsmack -a System /var/log/%{name}
 %postun -p /sbin/ldconfig
 
 
@@ -86,6 +90,7 @@ install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/muse-server.socket
 %{_unitdir}/muse-server.socket
 %{_unitdir}/sockets.target.wants/muse-server.socket
 %{_datadir}/mused/mused.conf
+/var/log/%{name}
 /usr/bin/*
 
 
