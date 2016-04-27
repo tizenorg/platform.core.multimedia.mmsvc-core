@@ -27,7 +27,7 @@
 
 static muse_core_module_t *g_muse_core_module = NULL;
 
-static GModule * _muse_core_module_load(int api_module);
+static GModule *_muse_core_module_load(int api_module);
 static void _muse_core_module_dispatch(int cmd, muse_module_h module);
 static gboolean _muse_core_module_close(muse_module_h module);
 static void _muse_core_module_free(void);
