@@ -54,6 +54,7 @@ extern "C" {
 #include <sys/poll.h>
 #include <sys/un.h>
 #include <sys/file.h>
+#include <sys/syscall.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -73,6 +74,21 @@ extern "C" {
 #define DISPATCHER "dispatcher"
 #define CMD_DISPATCHER "cmd_dispatcher"
 #define MUSE_FREE(src) { if (src) {g_free(src); src = NULL;} }
+
+enum {
+	IOPRIO_CLASS_NONE,
+	IOPRIO_CLASS_RT,
+	IOPRIO_CLASS_BE,
+	IOPRIO_CLASS_IDLE,
+};
+
+enum {
+	IOPRIO_WHO_PROCESS = 1,
+	IOPRIO_WHO_PGRP,
+	IOPRIO_WHO_USER,
+};
+
+#define IOPRIO_CLASS_SHIFT	13
 
 #ifdef __cplusplus
 }
