@@ -35,6 +35,7 @@ typedef enum {
 	MUSE_PLAYER,
 	MUSE_CAMERA,
 	MUSE_RECORDER,
+	MUSE_SOUND,
 	MUSE_MODULE_MAX
 } muse_core_api_module_e;
 
