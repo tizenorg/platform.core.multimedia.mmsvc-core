@@ -54,6 +54,7 @@ extern "C" {
 #include <sys/poll.h>
 #include <sys/un.h>
 #include <sys/file.h>
+#include <sys/syscall.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <pthread.h>
