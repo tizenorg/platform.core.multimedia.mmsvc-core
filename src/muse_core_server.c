@@ -84,7 +84,7 @@ static void _muse_core_server_gst_init(char **cmd)
 
 int main(int argc, char **argv)
 {
-	int result;
+	int result, ret, ioprio;
 	pid_t pid, sid;
 	int index;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
@@ -133,6 +133,14 @@ int main(int argc, char **argv)
 
 	/* Change the file mode mask */
 	umask(0);
+
+	ioprio = syscall(SYS_ioprio_get, IOPRIO_WHO_PROCESS, getpid());
+	if (ioprio != -1)
+		LOGD("syscall success - pid = %d, priority value = %d", getpid(), ioprio);
+
+	ret = syscall(SYS_ioprio_set, IOPRIO_WHO_PROCESS, getpid(), ioprio | IOPRIO_CLASS_RT << IOPRIO_CLASS_SHIFT);
+	if (ret == -1)
+		LOGE("syscall - failed to set ioprio, %s", strerror(errno));
 
 	result = chdir("/");
 	LOGD("result = %d", result);
