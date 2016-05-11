@@ -429,9 +429,6 @@ void muse_core_cmd_dispatch(muse_module_h module, muse_module_command_e cmd)
 	if (cmd_dispatcher && cmd_dispatcher[cmd]) {
 		LOGD("cmd_dispatcher: %p", cmd_dispatcher);
 		cmd_dispatcher[cmd](module);
-	} else {
-		LOGE("error - cmd_dispatcher");
-		return;
 	}
 }
 

@@ -300,8 +300,7 @@ static void _muse_core_log_set_msg(char *msg)
 	g_return_if_fail(g_muse_core_log != NULL);
 	g_return_if_fail(msg != NULL);
 
-	MUSE_FREE(g_muse_core_log->buf);
-	g_muse_core_log->buf = g_strdup(msg);
+	g_muse_core_log->buf = msg;
 }
 
 static char *_muse_core_log_get_msg(void)

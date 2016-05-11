@@ -36,8 +36,10 @@ static json_object *_muse_core_msg_json_find_obj(json_object * jobj, const char 
 	key_len = strlen(find_key);
 
 	json_object_object_foreach(jobj, key, val) {
-		if (strlen(key) == key_len && !memcmp(key, find_key, key_len))
+		if (strlen(key) == key_len && !memcmp(key, find_key, key_len)) {
+			LOGD("key %s: value %s", key, json_object_get_string(val));
 			return val;
+		}
 	}
 
 	return NULL;
