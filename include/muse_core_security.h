@@ -28,7 +28,7 @@ extern "C" {
 
 #include "muse_core_internal.h"
 
-#define CYNARA_CACHE_SIZE 1000U
+#define CYNARA_CACHE_SIZE 100U
 
 typedef struct muse_core_security {
 	void *p_cynara;

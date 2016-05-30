@@ -130,6 +130,8 @@ static bool _muse_core_attach_server(int fd, muse_module_callback callback, gpoi
 	g_source_attach(src, g_main_loop_get_context(g_loop));
 	g_source_unref(src);
 
+	g_io_channel_unref(channel);
+
 	return true;
 }
 
@@ -154,6 +156,8 @@ static muse_core_t *_muse_core_create_new_server_from_fd(int fd[], int type)
 	for (i = 0; i < MUSE_CHANNEL_MAX; i++) {
 		if (!_muse_core_attach_server(fd[i], _muse_core_connection_handler, (gpointer)(intptr_t) i)) {
 			LOGD("Fail to attach server fd %d", fd[i]);
+			muse_core_connection_close(server->fd);
+			muse_core_connection_close(server->data_fd);
 			MUSE_FREE(server);
 			return NULL;
 		}
@@ -180,7 +184,7 @@ static int _muse_core_free(muse_core_t *server)
 	muse_core_workqueue_get_instance()->shutdown();
 	muse_core_config_get_instance()->free();
 	muse_core_module_get_instance()->free();
-	muse_core_ipc_get_instance()->deinit();
+	muse_core_ipc_get_instance()->free();
 	muse_core_security_get_instance()->free();
 	LOGD("Leave");
 	return retval;
@@ -513,9 +517,9 @@ void muse_core_worker_exit(muse_module_h module)
 	muse_core_connection_close(module->ch[MUSE_CHANNEL_MSG].fd);
 	muse_core_connection_close(module->ch[MUSE_CHANNEL_DATA].fd);
 
-	g_return_if_fail(module->ch[MUSE_CHANNEL_MSG].p_gthread != NULL);
-	LOGD("%p thread exit\n", module->ch[MUSE_CHANNEL_MSG].p_gthread);
-	g_thread_unref(module->ch[MUSE_CHANNEL_MSG].p_gthread);
+	LOGD("%p thread exit", module->ch[MUSE_CHANNEL_MSG].p_gthread);
+	if (module->ch[MUSE_CHANNEL_MSG].p_gthread)
+		g_thread_unref(module->ch[MUSE_CHANNEL_MSG].p_gthread);
 
 	if (module->ch[MUSE_CHANNEL_DATA].p_gthread)
 		g_thread_unref(module->ch[MUSE_CHANNEL_DATA].p_gthread);

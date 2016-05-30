@@ -47,7 +47,8 @@ static gpointer _muse_core_ipc_data_worker(gpointer data);
 static muse_recv_data_t *_muse_core_ipc_new_qdata(char **recvBuff, int recvSize, int *allocSize);
 static bool _muse_core_ipc_init_bufmgr(void);
 static void _muse_core_ipc_deinit_bufmgr(void);
-static void _muse_core_ipc_init_instance(void (*deinit)(void));
+static void _muse_core_ipc_free(void);
+static void _muse_core_ipc_init_instance(void (*free)(void));
 
 static void _muse_core_ipc_client_cleanup(muse_module_h module)
 {
@@ -105,7 +106,6 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 							module->api_module = api_module;
 							module->is_create_api_called = true;
 							module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_get_instance()->load(api_module);
-							muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_INITIALIZE);
 							module->ch[MUSE_CHANNEL_DATA].queue = g_queue_new();
 							g_mutex_init(&module->ch[MUSE_CHANNEL_DATA].mutex);
 							LOGD("module fd: %d dll_handle: %p", module->ch[MUSE_CHANNEL_MSG].fd, module->ch[MUSE_CHANNEL_MSG].dll_handle);
@@ -124,7 +124,6 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 							if (muse_core_msg_json_deserialize(MUSE_MODULE, module->recvMsg + module->msg_offset, &parse_len, &api_module, &err, MUSE_TYPE_INT)) {
 								module->api_module = api_module;
 								module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_get_instance()->load(api_module);
-								muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_INITIALIZE);
 								module->ch[MUSE_CHANNEL_DATA].queue = g_queue_new();
 								g_mutex_init(&module->ch[MUSE_CHANNEL_DATA].mutex);
 							}
@@ -275,16 +274,29 @@ static void _muse_core_ipc_deinit_bufmgr(void)
 	LOGD("Leave");
 }
 
-static void _muse_core_ipc_init_instance(void (*deinit)(void))
+static void _muse_core_ipc_free(void)
 {
-	g_return_if_fail(deinit != NULL);
+	LOGD("Enter");
+
+	_muse_core_ipc_deinit_bufmgr();
+
+	g_return_if_fail(g_muse_core_ipc != NULL);
+
+	MUSE_FREE(g_muse_core_ipc);
+
+	LOGD("Leave");
+}
+
+static void _muse_core_ipc_init_instance(void (*free)(void))
+{
+	g_return_if_fail(free != NULL);
 	g_return_if_fail(g_muse_core_ipc == NULL);
 
 	g_muse_core_ipc = calloc(1, sizeof(*g_muse_core_ipc));
 	g_return_if_fail(g_muse_core_ipc != NULL);
 	g_return_if_fail(_muse_core_ipc_init_bufmgr() == TRUE);
 
-	g_muse_core_ipc->deinit = deinit;
+	g_muse_core_ipc->free = free;
 }
 
 int muse_core_ipc_get_client_from_job(muse_core_workqueue_job_t *job)
@@ -471,7 +483,7 @@ int muse_core_ipc_get_bufmgr(tbm_bufmgr *bufmgr)
 muse_core_ipc_t *muse_core_ipc_get_instance(void)
 {
 	if (g_muse_core_ipc == NULL)
-		_muse_core_ipc_init_instance(_muse_core_ipc_deinit_bufmgr);
+		_muse_core_ipc_init_instance(_muse_core_ipc_free);
 
 	return g_muse_core_ipc;
 }
@@ -481,7 +493,7 @@ void muse_core_ipc_init(void)
 	LOGD("Enter");
 
 	if (g_muse_core_ipc == NULL)
-		_muse_core_ipc_init_instance(_muse_core_ipc_deinit_bufmgr);
+		_muse_core_ipc_init_instance(_muse_core_ipc_free);
 
 	LOGD("Leave");
 }

@@ -48,7 +48,6 @@ static void _muse_core_server_gst_init(char **cmd)
 	gchar** argv = NULL;
 	GError *err = NULL;
 	gboolean ret = FALSE;
-	int i;
 	int gst_param_cnt;
 
 	gst_param_cnt = muse_core_config_get_instance()->get_gst_param_cnt();
@@ -61,10 +60,10 @@ static void _muse_core_server_gst_init(char **cmd)
 	memset(argv, 0, sizeof(gchar*) * (gst_param_cnt + 1));
 
 	*argc = 0;
-	argv[*argc] = (gchar *)g_strdup(cmd[0]);
+	argv[*argc] = (gchar *) cmd[0];
 	(*argc)++;
 	for (; (*argc) <= gst_param_cnt; (*argc)++)
-		argv[*argc] = g_strdup(muse_core_config_get_instance()->get_gst_param_str((*argc) - 1));
+		argv[*argc] = muse_core_config_get_instance()->get_gst_param_str((*argc) - 1);
 
 	/* initializing gstreamer */
 	ret = gst_init_check (argc, &argv, &err);
@@ -75,9 +74,6 @@ static void _muse_core_server_gst_init(char **cmd)
 	}
 
 	/* release */
-	for (i = 0; i <= *argc; i++)
-		MUSE_FREE(argv[i]);
-
 	MUSE_FREE(argv);
 	MUSE_FREE(argc);
 }
@@ -135,7 +131,7 @@ int main(int argc, char **argv)
 	umask(0);
 
 	result = chdir("/");
-	LOGD("result = %d", result);
+	LOGD("result = %d sid: %5d pgid: %5d pid: %5d ppid: %5d", result, (int)getsid(0), (int)getpgid(0), (int)getpid(), (int)getppid());
 
 	return muse_core_run();
 }
