@@ -27,7 +27,7 @@
 
 static muse_core_module_t *g_muse_core_module = NULL;
 
-static GModule * _muse_core_module_load(int api_module);
+static GModule *_muse_core_module_load(int api_module);
 static void _muse_core_module_dispatch(int cmd, muse_module_h module);
 static gboolean _muse_core_module_close(muse_module_h module);
 static void _muse_core_module_free(void);
@@ -178,8 +178,8 @@ muse_core_module_t *muse_core_module_get_instance(void)
 {
 	if (g_muse_core_module == NULL)
 		_muse_core_module_init_instance(_muse_core_module_load, _muse_core_module_dispatch, _muse_core_module_close, _muse_core_module_free,
-		_muse_core_module_get_dllsymbol, _muse_core_module_set_dllsymbol_loaded_value, _muse_core_module_get_dllsymbol_loaded_value,
-		_muse_core_module_set_dllsymbol_value, _muse_core_module_get_dllsymbol_value);
+					_muse_core_module_get_dllsymbol, _muse_core_module_set_dllsymbol_loaded_value, _muse_core_module_get_dllsymbol_loaded_value,
+					_muse_core_module_set_dllsymbol_value, _muse_core_module_get_dllsymbol_value);
 
 	return g_muse_core_module;
 }
@@ -190,8 +190,8 @@ void muse_core_module_init(void)
 
 	if (g_muse_core_module == NULL)
 		_muse_core_module_init_instance(_muse_core_module_load, _muse_core_module_dispatch, _muse_core_module_close, _muse_core_module_free,
-		_muse_core_module_get_dllsymbol, _muse_core_module_set_dllsymbol_loaded_value, _muse_core_module_get_dllsymbol_loaded_value,
-		_muse_core_module_set_dllsymbol_value, _muse_core_module_get_dllsymbol_value);
+					_muse_core_module_get_dllsymbol, _muse_core_module_set_dllsymbol_loaded_value, _muse_core_module_get_dllsymbol_loaded_value,
+					_muse_core_module_set_dllsymbol_value, _muse_core_module_get_dllsymbol_value);
 
 	LOGD("Leave");
 }

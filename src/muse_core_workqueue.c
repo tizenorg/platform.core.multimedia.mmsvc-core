@@ -61,9 +61,7 @@ static void *_muse_core_workqueue_worker_function(void *ptr)
 		job->job_function(job);
 	}
 
-	pthread_mutex_unlock(&worker->workqueue->jobs_mutex);
 	MUSE_FREE(worker);
-
 	pthread_exit(NULL);
 }
 
@@ -83,6 +81,7 @@ static void _muse_core_workqueue_shutdown(void)
 	g_workqueue->waiting_jobs = NULL;
 	pthread_cond_broadcast(&g_workqueue->jobs_cond);
 	pthread_mutex_unlock(&g_workqueue->jobs_mutex);
+	MUSE_FREE(g_workqueue);
 	LOGD("Leave");
 }
 
@@ -123,10 +122,7 @@ int muse_core_workqueue_init(int numWorkers)
 	pthread_mutex_t blank_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 	g_workqueue = calloc(1, sizeof(muse_core_workqueue_workqueue_t));
-	if (!g_workqueue) {
-		LOGE("workqueue allocation failed");
-		return 1;
-	}
+	g_return_val_if_fail(g_workqueue != NULL, MM_ERROR_INVALID_ARGUMENT);
 
 	if (numWorkers < 1)
 		numWorkers = 1;
@@ -136,16 +132,13 @@ int muse_core_workqueue_init(int numWorkers)
 
 	for (i = 0; i < numWorkers; i++) {
 		worker = malloc(sizeof(muse_core_workqueue_worker_t));
-		if (worker == NULL) {
-			LOGE("Failed to allocate all workers");
-			return 1;
-		}
+		g_return_val_if_fail(worker != NULL, MM_ERROR_INVALID_ARGUMENT);
 		memset(worker, 0, sizeof(*worker));
 		worker->workqueue = g_workqueue;
 		if (pthread_create(&worker->thread, NULL, _muse_core_workqueue_worker_function, (void *)worker)) {
 			LOGE("Failed to start all worker threads");
 			MUSE_FREE(worker);
-			return 1;
+			return MM_ERROR_INVALID_ARGUMENT;
 		}
 		LL_ADD(worker, worker->workqueue->workers);
 	}

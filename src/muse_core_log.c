@@ -24,6 +24,7 @@
 #include "muse_core_ipc.h"
 #include "muse_core_log.h"
 #include "muse_core_workqueue.h"
+#include "muse_core_security.h"
 #ifndef __USE_GNU
 #define __USE_GNU /* for gregs */
 #endif
@@ -42,13 +43,15 @@ static void _muse_core_log_init_signals(void);
 static int _muse_core_log_fd_set_block(int fd);
 static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg);
 static void _muse_core_log_set_log_fd(void);
-static void _muse_core_log_init_instance(void (*log)(char *), void (*fatal)(char *), void (*set_msg) (char *), char * (*get_msg) (void), void (*flush_msg) (void));
+static void _muse_core_log_init_instance(void (*log)(char *), void (*fatal)(char *), void (*set_msg) (char *),
+						char * (*get_msg) (void), void (*flush_msg) (void), void (*free) (void));
 static void _muse_core_log_write_buffer(const void *buf, size_t len);
 static void _muse_core_log_monitor(char *msg);
 static void _muse_core_log_fatal(char *msg);
 static void _muse_core_log_set_msg(char *msg);
 static char *_muse_core_log_get_msg(void);
 static void _muse_core_log_flush_msg(void);
+static void _muse_core_log_free(void);
 
 static void _muse_core_log_sig_abort(int signo)
 {
@@ -59,34 +62,26 @@ static void _muse_core_log_sig_abort(int signo)
 	}
 
 	if (g_muse_core_log) {
-		static char client_name[256];
-		memset(client_name, '\0', sizeof(client_name));
-		snprintf(client_name, sizeof(client_name) - 1, "[client name] %s", muse_core_config_get_instance()->get_host(muse_core_module_get_instance()->api_module));
-		if (write(g_muse_core_log->log_fd, client_name, strlen(client_name)) != (int)strlen(client_name))
+		static char client_buf[256];
+		snprintf(client_buf, sizeof(client_buf), "[client name] %s", muse_core_config_get_instance()->get_host(muse_core_module_get_instance()->api_module));
+		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) != (int)strlen(client_buf))
 			LOGE("There was an error writing client name to logfile");
 		else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
-			LOGE("write %s", client_name);
+			LOGE("write %s", client_buf);
 
-		static char client_pid[256];
-		memset(client_pid, '\0', sizeof(client_pid));
-		snprintf(client_pid, sizeof(client_pid) - 1, "[client pid] %lu", (unsigned long) getpid());
-		if (write(g_muse_core_log->log_fd, client_pid, strlen(client_pid)) != (int)strlen(client_pid))
+		snprintf(client_buf, sizeof(client_buf), "[client pid] %lu", (unsigned long) getpid());
+		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) != (int)strlen(client_buf))
 			LOGE("There was an error writing client pid to logfile");
 		else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
-			LOGE("write %s", client_pid);
+			LOGE("write %s", client_buf);
 
-		static char latest_called_api[256];
-		memset(latest_called_api, '\0', sizeof(latest_called_api));
-		snprintf(latest_called_api, sizeof(latest_called_api) - 1, "[client's latest called api] %s", _muse_core_log_get_msg());
-
-		if (write(g_muse_core_log->log_fd, latest_called_api, strlen(latest_called_api)) != (int)strlen(latest_called_api))
+		snprintf(client_buf, sizeof(client_buf), "[client's latest called api] %s", _muse_core_log_get_msg());
+		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) != (int)strlen(client_buf))
 			LOGE("There was an error writing client's latest called api to logfile");
 		else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
-			LOGE("write %s", latest_called_api);
+			LOGE("write %s", client_buf);
 	}
 
-	muse_core_workqueue_get_instance()->shutdown();
-	muse_core_ipc_get_instance()->deinit();
 	LOGD("signo(%d)", signo);
 	if (signo == SIGABRT || signo == SIGSEGV)
 		abort();
@@ -228,7 +223,8 @@ static void _muse_core_log_set_log_fd(void)
 	(void) _muse_core_log_fd_set_block(g_muse_core_log->log_fd);
 }
 
-static void _muse_core_log_init_instance(void (*log)(char *), void (*fatal)(char *), void (*set_msg) (char *), char * (*get_msg) (void), void (*flush_msg) (void))
+static void _muse_core_log_init_instance(void (*log)(char *), void (*fatal)(char *), void (*set_msg) (char *),
+						char * (*get_msg) (void), void (*flush_msg) (void), void (*free) (void))
 {
 	g_return_if_fail(log != NULL);
 	g_return_if_fail(fatal != NULL);
@@ -241,12 +237,11 @@ static void _muse_core_log_init_instance(void (*log)(char *), void (*fatal)(char
 	memset(g_muse_core_log->cache, 0, WRITE_DEFAULT_BLOCK_SIZE);
 	g_muse_core_log->log = log;
 	g_muse_core_log->fatal = fatal;
-	g_muse_core_log->timer = g_timer_new();
 	g_muse_core_log->count = 0;
 	g_muse_core_log->set_msg = set_msg;
 	g_muse_core_log->get_msg = get_msg;
-	g_muse_core_log->flush_msg= flush_msg;
-	g_timer_stop(g_muse_core_log->timer);
+	g_muse_core_log->flush_msg = flush_msg;
+	g_muse_core_log->free = free;
 }
 
 static void
@@ -261,9 +256,6 @@ static void _muse_core_log_monitor(char *msg)
 {
 	g_return_if_fail(msg != NULL);
 	g_return_if_fail(g_muse_core_log != NULL);
-
-	if (g_muse_core_log->count != 0)
-		g_timer_continue(g_muse_core_log->timer);
 
 	if (g_muse_core_log->log_fd < 0) {
 		LOGE("Error - log fd");
@@ -280,9 +272,6 @@ static void _muse_core_log_monitor(char *msg)
 			LOGE("There was an error writing to logfile");
 		}
 	}
-
-	if (g_muse_core_log->count != 0)
-		g_timer_stop(g_muse_core_log->timer);
 }
 
 static void _muse_core_log_fatal(char *msg)
@@ -293,6 +282,15 @@ static void _muse_core_log_fatal(char *msg)
 	}
 
 	_muse_core_log_monitor(msg);
+}
+
+static void _muse_core_log_free(void)
+{
+	LOGD("Enter");
+
+	MUSE_FREE(g_muse_core_log);
+
+	LOGD("Leave");
 }
 
 static void _muse_core_log_set_msg(char *msg)
@@ -320,7 +318,8 @@ static void _muse_core_log_flush_msg(void)
 muse_core_log_t *muse_core_log_get_instance(void)
 {
 	if (g_muse_core_log == NULL)
-		_muse_core_log_init_instance(_muse_core_log_monitor, _muse_core_log_fatal, _muse_core_log_set_msg, _muse_core_log_get_msg, _muse_core_log_flush_msg);
+		_muse_core_log_init_instance(_muse_core_log_monitor, _muse_core_log_fatal, _muse_core_log_set_msg,
+								_muse_core_log_get_msg, _muse_core_log_flush_msg, _muse_core_log_free);
 
 	return g_muse_core_log;
 }
@@ -330,7 +329,8 @@ void muse_core_log_init(void)
 	LOGD("Enter");
 
 	if (g_muse_core_log == NULL)
-		_muse_core_log_init_instance(_muse_core_log_monitor, _muse_core_log_fatal, _muse_core_log_set_msg, _muse_core_log_get_msg, _muse_core_log_flush_msg);
+		_muse_core_log_init_instance(_muse_core_log_monitor, _muse_core_log_fatal, _muse_core_log_set_msg,
+								_muse_core_log_get_msg, _muse_core_log_flush_msg, _muse_core_log_free);
 
 	_muse_core_log_set_log_fd();
 	_muse_core_log_init_signals();

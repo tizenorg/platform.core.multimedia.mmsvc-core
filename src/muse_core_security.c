@@ -28,6 +28,7 @@ static muse_core_security_t *g_muse_core_security = NULL;
 static void _muse_core_security_cynara_log_error(const char *function, int errorCode);
 static int _muse_core_security_cynara_new(void);
 static void _muse_core_security_cynara_free(void);
+static void _muse_core_security_free(void);
 static bool _muse_core_security_cynara_check(int fd, const char *privilege);
 static void _muse_core_security_init_instance(int (*new)(void), void (*free)(void));
 
@@ -79,6 +80,15 @@ static void _muse_core_security_cynara_free(void)
 		cynara_finish((cynara *)g_muse_core_security->p_cynara);
 		g_muse_core_security->p_cynara = NULL;
 	}
+}
+
+static void _muse_core_security_free(void)
+{
+	LOGD("Enter");
+	_muse_core_security_cynara_free();
+
+	MUSE_FREE(g_muse_core_security);
+	LOGD("Leave");
 }
 
 static bool _muse_core_security_cynara_check(int fd, const char *privilege)
@@ -157,7 +167,7 @@ static void _muse_core_security_init_instance(int (*new)(void), void (*free)(voi
 muse_core_security_t *muse_core_security_get_instance(void)
 {
 	if (g_muse_core_security == NULL)
-		_muse_core_security_init_instance(_muse_core_security_cynara_new, _muse_core_security_cynara_free);
+		_muse_core_security_init_instance(_muse_core_security_cynara_new, _muse_core_security_free);
 
 	return g_muse_core_security;
 }
@@ -167,7 +177,7 @@ void muse_core_security_init(void)
 	LOGD("Enter");
 
 	if (g_muse_core_security == NULL)
-		_muse_core_security_init_instance(_muse_core_security_cynara_new, _muse_core_security_cynara_free);
+		_muse_core_security_init_instance(_muse_core_security_cynara_new, _muse_core_security_free);
 
 	LOGD("Leave");
 }

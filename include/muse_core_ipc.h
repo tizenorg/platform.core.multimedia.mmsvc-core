@@ -36,7 +36,7 @@ extern "C" {
 
 typedef struct muse_core_ipc {
 	tbm_bufmgr bufmgr;
-	void (*deinit)(void);
+	void (*free)(void);
 } muse_core_ipc_t;
 
 typedef enum {

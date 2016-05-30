@@ -36,12 +36,12 @@ typedef struct muse_core_log {
 	char cache[WRITE_DEFAULT_BLOCK_SIZE];
 	int log_fd;
 	int count;
-	GTimer *timer;
 	void (*log)(char *);
 	void (*fatal)(char *);
 	void (*set_msg) (char *);
 	char* (*get_msg) (void);
 	void (*flush_msg) (void);
+	void (*free) (void);
 } muse_core_log_t;
 
 /*muse_core_log_init must be called before muse_core_log_get_instance*/
