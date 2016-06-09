@@ -26,14 +26,14 @@ extern "C" {
 #endif
 
 #include <sys/time.h>
+#include "muse_core.h"
 #include "muse_core_msg_json.h"
-#define WRITE_DEFAULT_BLOCK_SIZE 4096
 
 typedef struct muse_core_log {
 	int type;
 	char *buf;
 	size_t size;
-	char cache[WRITE_DEFAULT_BLOCK_SIZE];
+	char cache[MUSE_MSG_MAX_LENGTH];
 	int log_fd;
 	int count;
 	void (*log)(char *);

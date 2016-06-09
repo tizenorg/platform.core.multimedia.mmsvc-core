@@ -29,7 +29,8 @@ extern "C" {
 #define MUSE_URI_MAX_LENGTH 4096
 #define MUSE_MSG_MAX_LENGTH 4096
 
-typedef struct muse_module * muse_module_h;
+typedef struct muse_module *muse_module_h;
+typedef struct muse_client *muse_client_h;
 
 typedef enum {
 	MUSE_MODULE_COMMAND_INITIALIZE = 0,
@@ -42,6 +43,8 @@ int muse_core_run(void);
 void muse_core_cmd_dispatch(muse_module_h module, muse_module_command_e cmd);
 void muse_core_connection_close(int sock_fd);
 int muse_core_client_new(void);
+muse_client_h muse_core_client_handle_new(void);
+int muse_core_client_handle_get_fd(muse_client_h muse_client);
 int muse_core_client_new_data_ch(void);
 int muse_core_client_get_msg_fd(muse_module_h module);
 int muse_core_client_get_data_fd(muse_module_h module);
@@ -51,8 +54,9 @@ char *muse_core_client_get_msg(muse_module_h module);
 int muse_core_client_get_capi(muse_module_h module);
 int muse_core_client_set_value(muse_module_h module, const char *value_name, int set_value);
 int muse_core_client_get_value(muse_module_h module, const char *value_name, int *get_value);
+void muse_core_client_handle_free(muse_client_h muse_client);
 void muse_core_worker_exit(muse_module_h module);
-unsigned muse_core_get_atomic_uint(void);
+unsigned int muse_core_get_atomic_uint(void);
 
 #ifdef __cplusplus
 }
