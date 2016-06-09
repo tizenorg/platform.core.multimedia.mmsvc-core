@@ -36,30 +36,8 @@ static json_object *_muse_core_msg_json_find_obj(json_object * jobj, const char 
 	key_len = strlen(find_key);
 
 	json_object_object_foreach(jobj, key, val) {
-		if (strlen(key) == key_len && !memcmp(key, find_key, key_len)) {
-			LOGD("key %s: value %s", key, json_object_get_string(val));
+		if (strlen(key) == key_len && !memcmp(key, find_key, key_len))
 			return val;
-		}
-	}
-
-	return NULL;
-}
-
-static json_object *_muse_core_msg_json_find_key(const char *find_key, json_object *jso)
-{
-	size_t key_len = 0;
-
-	g_return_val_if_fail(jso != NULL, NULL);
-
-	g_return_val_if_fail(find_key != NULL, NULL);
-
-	key_len = strlen(find_key);
-
-	json_object_object_foreach(jso, key, val) {
-		if (strlen(key) == key_len && !memcmp(key, find_key, key_len)) {
-			LOGD("[%s] : %s", key, json_object_to_json_string(val));
-			return val;
-		}
 	}
 
 	return NULL;
@@ -117,7 +95,6 @@ static void _muse_core_msg_json_factory_args(json_object *jobj, va_list ap)
 
 	while ((type = va_arg(ap, int)) != 0) {
 		name = va_arg(ap, char *);
-		LOGD("[type:#%d] key: %s ", type, name);
 		switch (type) {
 		case MUSE_TYPE_INT:
 			json_object_object_add(jobj, name, json_object_new_int(va_arg(ap, int32_t)));
@@ -224,27 +201,21 @@ gboolean muse_core_msg_json_deserialize(
 	case json_type_int:
 		if (m_type == MUSE_TYPE_ANY || m_type == MUSE_TYPE_INT) {
 			*(int32_t *)data = json_object_get_int(val);
-			LOGD("json_type_int (%s)          value: %d", key, *(int32_t *)data);
 		} else if (m_type == MUSE_TYPE_INT64) {
 			*(int64_t *)data = json_object_get_int64(val);
-			LOGD("json_type_int (%s)          value: %" G_GINT64_FORMAT "", key, *(int64_t *)data);
 		} else if (m_type == MUSE_TYPE_POINTER) {
 			if (sizeof(intptr_t) == 8)
 				*(intptr_t *)data = json_object_get_int64(val);
 			else
 				*(intptr_t *)data = json_object_get_int(val);
-			LOGD("json_type_int (%s)          value: %p", key, *(intptr_t *)data);
 		} else if (m_type == MUSE_TYPE_DOUBLE) {
 			*(double *)data = json_object_get_double(val);
-			LOGD("json_type_double (%s)          value: %.20lf", key, *(double *)data);
 		}
 		break;
 	case json_type_object:
-		LOGD("json_type_object (%s)          value: %d", key, json_object_get_object(val));
 		break;
 	case json_type_string:
 		strncpy((char *)data, json_object_get_string(val), strlen(json_object_get_string(val)));
-		LOGD("json_type_string (%s)          value: %s", key, (char *)data);
 		break;
 	case json_type_array:
 		LOGD("json_type_array (%s)", key);
@@ -286,7 +257,7 @@ gboolean muse_core_msg_json_object_get_value(const char *key, void* jobj, void *
 	g_return_val_if_fail(jobj != NULL, FALSE);
 	g_return_val_if_fail(data != NULL, FALSE);
 
-	val = _muse_core_msg_json_find_key(key, (json_object *)jobj);
+	val = _muse_core_msg_json_find_obj((json_object *)jobj, key);
 	if (!val) {
 		LOGE("\"%s\" key is not founded", key);
 		json_object_put(jobj);
