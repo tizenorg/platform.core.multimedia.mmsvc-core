@@ -36,30 +36,8 @@ static json_object *_muse_core_msg_json_find_obj(json_object * jobj, const char 
 	key_len = strlen(find_key);
 
 	json_object_object_foreach(jobj, key, val) {
-		if (strlen(key) == key_len && !memcmp(key, find_key, key_len)) {
-			LOGD("key %s: value %s", key, json_object_get_string(val));
+		if (strlen(key) == key_len && !memcmp(key, find_key, key_len))
 			return val;
-		}
-	}
-
-	return NULL;
-}
-
-static json_object *_muse_core_msg_json_find_key(const char *find_key, json_object *jso)
-{
-	size_t key_len = 0;
-
-	g_return_val_if_fail(jso != NULL, NULL);
-
-	g_return_val_if_fail(find_key != NULL, NULL);
-
-	key_len = strlen(find_key);
-
-	json_object_object_foreach(jso, key, val) {
-		if (strlen(key) == key_len && !memcmp(key, find_key, key_len)) {
-			LOGD("[%s] : %s", key, json_object_to_json_string(val));
-			return val;
-		}
 	}
 
 	return NULL;
@@ -117,7 +95,6 @@ static void _muse_core_msg_json_factory_args(json_object *jobj, va_list ap)
 
 	while ((type = va_arg(ap, int)) != 0) {
 		name = va_arg(ap, char *);
-		LOGD("[type:#%d] key: %s ", type, name);
 		switch (type) {
 		case MUSE_TYPE_INT:
 			json_object_object_add(jobj, name, json_object_new_int(va_arg(ap, int32_t)));
@@ -286,7 +263,7 @@ gboolean muse_core_msg_json_object_get_value(const char *key, void* jobj, void *
 	g_return_val_if_fail(jobj != NULL, FALSE);
 	g_return_val_if_fail(data != NULL, FALSE);
 
-	val = _muse_core_msg_json_find_key(key, (json_object *)jobj);
+	val = _muse_core_msg_json_find_obj((json_object *)jobj, key);
 	if (!val) {
 		LOGE("\"%s\" key is not founded", key);
 		json_object_put(jobj);

@@ -35,6 +35,7 @@
 #define U32BITS 0xffffffff
 #define MAX_FILE_NUM 3
 #define MAX_SIZE 33554432
+#define WRITE_FAIL -1
 
 static muse_core_log_t *g_muse_core_log = NULL;
 
@@ -64,21 +65,21 @@ static void _muse_core_log_sig_abort(int signo)
 	if (g_muse_core_log) {
 		static char client_buf[256];
 		snprintf(client_buf, sizeof(client_buf), "[client name] %s", muse_core_config_get_instance()->get_host(muse_core_module_get_instance()->api_module));
-		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) != (int)strlen(client_buf))
+		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
 			LOGE("There was an error writing client name to logfile");
-		else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
+		else if (write(g_muse_core_log->log_fd, "\n", 1) != WRITE_FAIL)
 			LOGE("write %s", client_buf);
 
 		snprintf(client_buf, sizeof(client_buf), "[client pid] %lu", (unsigned long) getpid());
-		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) != (int)strlen(client_buf))
+		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
 			LOGE("There was an error writing client pid to logfile");
-		else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
+		else if (write(g_muse_core_log->log_fd, "\n", 1) == WRITE_FAIL)
 			LOGE("write %s", client_buf);
 
 		snprintf(client_buf, sizeof(client_buf), "[client's latest called api] %s", _muse_core_log_get_msg());
-		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) != (int)strlen(client_buf))
+		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
 			LOGE("There was an error writing client's latest called api to logfile");
-		else if (write(g_muse_core_log->log_fd, "\n", 1) != 1)
+		else if (write(g_muse_core_log->log_fd, "\n", 1) == WRITE_FAIL)
 			LOGE("write %s", client_buf);
 	}
 
@@ -234,7 +235,7 @@ static void _muse_core_log_init_instance(void (*log)(char *), void (*fatal)(char
 	g_return_if_fail(g_muse_core_log != NULL);
 	g_muse_core_log->buf = NULL;
 	g_muse_core_log->size = 0;
-	memset(g_muse_core_log->cache, 0, WRITE_DEFAULT_BLOCK_SIZE);
+	memset(g_muse_core_log->cache, 0, MUSE_MSG_MAX_LENGTH);
 	g_muse_core_log->log = log;
 	g_muse_core_log->fatal = fatal;
 	g_muse_core_log->count = 0;
@@ -262,11 +263,11 @@ static void _muse_core_log_monitor(char *msg)
 		return;
 	}
 
-	if (strlen(g_muse_core_log->cache) + strlen(msg) < WRITE_DEFAULT_BLOCK_SIZE) {
+	if (strlen(g_muse_core_log->cache) + strlen(msg) < MUSE_MSG_MAX_LENGTH) {
 		_muse_core_log_write_buffer(msg, strlen(msg));
 	} else {
-		if (write(g_muse_core_log->log_fd, g_muse_core_log->cache, strlen(g_muse_core_log->cache)) == (int)strlen(g_muse_core_log->cache)) {
-			memset(g_muse_core_log->cache, 0, WRITE_DEFAULT_BLOCK_SIZE);
+		if (write(g_muse_core_log->log_fd, g_muse_core_log->cache, strlen(g_muse_core_log->cache)) != WRITE_FAIL) {
+			memset(g_muse_core_log->cache, 0, MUSE_MSG_MAX_LENGTH);
 			_muse_core_log_write_buffer(msg, strlen(msg));
 		} else {
 			LOGE("There was an error writing to logfile");
