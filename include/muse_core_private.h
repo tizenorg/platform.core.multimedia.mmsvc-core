@@ -62,6 +62,11 @@ typedef struct muse_module {
 	gboolean is_create_api_called; /* If false, corresponding to the static function */
 } muse_module_t;
 
+typedef struct muse_client {
+	int fd;
+	char cache[MUSE_MSG_MAX_LENGTH * 2];
+} muse_client_t;
+
 typedef struct muse_core {
 	int fd;
 	int data_fd;
