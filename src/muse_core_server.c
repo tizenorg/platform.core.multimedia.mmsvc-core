@@ -131,7 +131,7 @@ int main(int argc, char **argv)
 	umask(0);
 
 	result = chdir("/");
-	LOGD("result = %d sid: %5d pgid: %5d pid: %5d ppid: %5d", result, (int)getsid(0), (int)getpgid(0), (int)getpid(), (int)getppid());
+	LOGD("result = %d sid: %d pgid: %d pid: %d ppid: %d", result, (int)getsid(0), (int)getpgid(0), (int)getpid(), (int)getppid());
 
 	return muse_core_run();
 }
