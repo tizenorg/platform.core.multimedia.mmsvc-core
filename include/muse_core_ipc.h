@@ -36,6 +36,7 @@ extern "C" {
 
 typedef struct muse_core_ipc {
 	tbm_bufmgr bufmgr;
+	muse_client_h client;
 	void (*free)(void);
 } muse_core_ipc_t;
 
@@ -48,6 +49,7 @@ typedef enum {
 gboolean muse_core_ipc_job_function(struct muse_core_workqueue_job * job);
 int muse_core_ipc_send_msg(int sock_fd, const char *msg);
 int muse_core_ipc_recv_msg(int sock_fd, char *msg);
+int muse_core_ipc_recv_msg_ext(muse_client_h mue_client, char *msg);
 void muse_core_ipc_set_timeout(int sock_fd, unsigned long timeout_sec);
 gboolean muse_core_ipc_data_job_function(muse_core_workqueue_job_t * job);
 int muse_core_ipc_push_data(int sock_fd, const char *data, int size, uint64_t data_id);
