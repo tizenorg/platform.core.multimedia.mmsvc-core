@@ -68,11 +68,9 @@ static void _muse_core_module_dispatch(int cmd, muse_module_h module)
 
 	g_return_if_fail(module->ch[MUSE_CHANNEL_MSG].dll_handle != NULL);
 
-	LOGD("cmd: %d\t module's dll_handle: %p", cmd, module->ch[MUSE_CHANNEL_MSG].dll_handle);
 	g_module_symbol(module->ch[MUSE_CHANNEL_MSG].dll_handle, DISPATCHER, (gpointer *)&dispatcher);
 
 	if (dispatcher && dispatcher[cmd]) {
-		LOGD("dispatcher: %p", dispatcher);
 		dispatcher[cmd](module);
 	} else {
 		LOGE("error - dispatcher");

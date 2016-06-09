@@ -28,6 +28,9 @@
 #include "muse_core_msg_json.h"
 #include "muse_core_module.h"
 
+#define END_DELIM '}'
+#define RECV_ERR -1
+
 typedef struct muse_recv_data_head {
 	unsigned int marker;
 	uint64_t id;
@@ -39,14 +42,17 @@ typedef struct muse_recv_data {
 	/* Dynamic allocated data area */
 } muse_recv_data_t;
 
-static muse_core_ipc_t *g_muse_core_ipc;
+static muse_core_ipc_t *g_muse_core_ipc = NULL;
 
 static void _muse_core_ipc_client_cleanup(muse_module_h module);
 static gpointer _muse_core_ipc_dispatch_worker(gpointer data);
 static gpointer _muse_core_ipc_data_worker(gpointer data);
 static muse_recv_data_t *_muse_core_ipc_new_qdata(char **recvBuff, int recvSize, int *allocSize);
+static void _muse_core_ipc_msg_concatenate(muse_client_h *client, char *msg, int len);
+static bool _muse_core_ipc_msg_complete_confirm(muse_client_h *client, char *msg, int len);
 static bool _muse_core_ipc_init_bufmgr(void);
 static void _muse_core_ipc_deinit_bufmgr(void);
+static void _muse_core_ipc_client_free(gpointer key, gpointer value, gpointer user_data);
 static void _muse_core_ipc_free(void);
 static void _muse_core_ipc_init_instance(void (*free)(void));
 
@@ -55,6 +61,8 @@ static void _muse_core_ipc_client_cleanup(muse_module_h module)
 	g_return_if_fail(module != NULL);
 
 	muse_core_log_get_instance()->flush_msg();
+	g_hash_table_foreach(g_muse_core_ipc->client_table, (GHFunc)_muse_core_ipc_client_free, NULL);
+
 	g_queue_free(module->ch[MUSE_CHANNEL_DATA].queue);
 	module->ch[MUSE_CHANNEL_DATA].queue = NULL;
 	g_cond_broadcast(&module->ch[MUSE_CHANNEL_DATA].cond);
@@ -90,7 +98,6 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 			_muse_core_ipc_client_cleanup(module);
 		} else {
 			parse_len = len;
-			LOGD("Message In");
 			cmd = 0;
 			api_module = 0;
 			module->msg_offset = 0;
@@ -128,7 +135,6 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 								g_mutex_init(&module->ch[MUSE_CHANNEL_DATA].mutex);
 							}
 						}
-						LOGD("[default] module's dll_handle: %p", module->ch[MUSE_CHANNEL_MSG].dll_handle);
 						muse_core_module_get_instance()->dispatch(cmd, module);
 						if (module->is_create_api_called == false)
 							_muse_core_ipc_client_cleanup(module);
@@ -247,6 +253,53 @@ static muse_recv_data_t *_muse_core_ipc_new_qdata(char **recvBuff, int recvSize,
 	return qData;
 }
 
+static void _muse_core_ipc_msg_concatenate(muse_client_h *client, char *msg, int msg_len)
+{
+	g_return_if_fail(*client != NULL);
+	g_return_if_fail(msg != NULL);
+
+	int cache_len = (int)strlen((*client)->cache);
+	if (cache_len > 0) {
+		memcpy((*client)->cache + cache_len, msg, msg_len);
+		(*client)->cache[cache_len + msg_len] = '\0';
+		cache_len = (int)strlen((*client)->cache);
+		memcpy(msg, (*client)->cache, MUSE_MSG_MAX_LENGTH);
+		if (cache_len <= MUSE_MSG_MAX_LENGTH) {
+			msg[cache_len] = '\0';
+			memset((*client)->cache, 0, MUSE_MSG_MAX_LENGTH * 2);
+		} else {
+			char tmp[MUSE_MSG_MAX_LENGTH];
+			int tmp_len;
+			memset(tmp, 0, MUSE_MSG_MAX_LENGTH);
+			memcpy(tmp, (*client)->cache + MUSE_MSG_MAX_LENGTH + 1, cache_len - MUSE_MSG_MAX_LENGTH + 1);
+			tmp_len = (int)strlen(tmp);
+			memset((*client)->cache, 0, MUSE_MSG_MAX_LENGTH * 2);
+			memcpy((*client)->cache, tmp, tmp_len);
+			(*client)->cache[tmp_len] = '\0';
+		}
+	}
+}
+
+static bool _muse_core_ipc_msg_complete_confirm(muse_client_h *client, char *msg, int len)
+{
+	g_return_val_if_fail(*client != NULL, TRUE);
+	g_return_val_if_fail(msg != NULL, TRUE);
+
+	char *ptr = strrchr(msg, END_DELIM);
+	size_t ptr_len = strlen(ptr) - 1;
+
+	if (ptr_len > 0) {
+		int idx = ptr - msg;
+		memcpy((*client)->cache, ptr + 1, ptr_len);
+		(*client)->cache[ptr_len] = '\0';
+		msg[idx + 1] = '\0';
+		LOGD("cache %d %s", strlen((*client)->cache), (*client)->cache);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static bool _muse_core_ipc_init_bufmgr(void)
 {
 	LOGD("Enter");
@@ -274,6 +327,22 @@ static void _muse_core_ipc_deinit_bufmgr(void)
 	LOGD("Leave");
 }
 
+static void _muse_core_ipc_client_new(int sock_fd, muse_client_h client)
+{
+	g_return_if_fail(g_muse_core_ipc != NULL);
+	g_return_if_fail(g_muse_core_ipc->client_table != NULL);
+	g_return_if_fail(g_muse_core_ipc->key != NULL);
+
+	*(g_muse_core_ipc->key) = sock_fd;
+
+	g_hash_table_insert(g_muse_core_ipc->client_table, g_muse_core_ipc->key, (gpointer)client);
+}
+
+static void _muse_core_ipc_client_free(gpointer key, gpointer value, gpointer user_data)
+{
+	MUSE_FREE(value);
+}
+
 static void _muse_core_ipc_free(void)
 {
 	LOGD("Enter");
@@ -282,6 +351,8 @@ static void _muse_core_ipc_free(void)
 
 	g_return_if_fail(g_muse_core_ipc != NULL);
 
+	g_hash_table_destroy(g_muse_core_ipc->client_table);
+	MUSE_FREE(g_muse_core_ipc->key);
 	MUSE_FREE(g_muse_core_ipc);
 
 	LOGD("Leave");
@@ -294,7 +365,12 @@ static void _muse_core_ipc_init_instance(void (*free)(void))
 
 	g_muse_core_ipc = calloc(1, sizeof(*g_muse_core_ipc));
 	g_return_if_fail(g_muse_core_ipc != NULL);
+	g_muse_core_ipc->client_table = g_hash_table_new(g_int_hash, g_int_equal);
+	g_return_if_fail(g_muse_core_ipc->client_table != NULL);
+
 	g_return_if_fail(_muse_core_ipc_init_bufmgr() == TRUE);
+	g_muse_core_ipc->key = g_new(gint, 1);
+	g_return_if_fail(g_muse_core_ipc->key != NULL);
 
 	g_muse_core_ipc->free = free;
 }
@@ -317,6 +393,7 @@ gboolean muse_core_ipc_job_function(muse_core_workqueue_job_t *job)
 {
 	LOGD("Enter");
 	muse_module_h module = NULL;
+	muse_client_h client = NULL;
 
 	g_return_val_if_fail(job != NULL, FALSE);
 
@@ -324,6 +401,13 @@ gboolean muse_core_ipc_job_function(muse_core_workqueue_job_t *job)
 	g_return_val_if_fail(module != NULL, FALSE);
 
 	LOGD("[%p] client's fd : %d", module, module->ch[MUSE_CHANNEL_MSG].fd);
+
+	client = calloc(1, sizeof(muse_client_t));
+	g_return_val_if_fail(client != NULL, FALSE);
+	LOGD("client: %p", client);
+
+	memset(client->cache, 0, MUSE_MSG_MAX_LENGTH * 2);
+	_muse_core_ipc_client_new(module->ch[MUSE_CHANNEL_MSG].fd, client);
 
 	module->ch[MUSE_CHANNEL_MSG].p_gthread = g_thread_new(NULL, _muse_core_ipc_dispatch_worker, (gpointer)module);
 	g_return_val_if_fail(module->ch[MUSE_CHANNEL_MSG].p_gthread != NULL, FALSE);
@@ -364,8 +448,6 @@ int muse_core_ipc_send_msg(int sock_fd, const char *msg)
 	if ((ret = send(sock_fd, msg, strlen(msg), 0)) < 0) {
 		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
 		LOGE("fail to send msg (%s)", err_msg);
-	} else {
-		LOGD("[strlen: %d] %s", ret, msg);
 	}
 
 	return ret;
@@ -375,14 +457,38 @@ int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 {
 	int ret = MM_ERROR_NONE;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
-	g_return_val_if_fail(msg != NULL, MM_ERROR_INVALID_ARGUMENT);
+	g_return_val_if_fail(msg != NULL, RECV_ERR);
 
 	if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0) {
 		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
 		LOGE("fail to receive msg (%s)", err_msg);
 	} else if (ret > 0) {
-		msg[ret] = '\0';
-		LOGD("[strlen: %d] %s", ret, msg);
+		*(g_muse_core_ipc->key) = sock_fd;
+		muse_client_h client = g_hash_table_lookup(g_muse_core_ipc->client_table, g_muse_core_ipc->key);
+		g_return_val_if_fail(client != NULL, RECV_ERR);
+
+		_muse_core_ipc_msg_concatenate(&client, msg, ret);
+		if (_muse_core_ipc_msg_complete_confirm(&client, msg, ret) == FALSE)
+			LOGW("%s", client->cache);
+	}
+
+	return ret;
+}
+
+int muse_core_ipc_recv_msg_ext(muse_client_h client, char *msg)
+{
+	int ret = MM_ERROR_NONE;
+	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
+	g_return_val_if_fail(client != NULL, RECV_ERR);
+	g_return_val_if_fail(msg != NULL, RECV_ERR);
+
+	if ((ret = recv(client->fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("fail to receive msg (%s)", err_msg);
+	} else if (ret > 0) {
+		_muse_core_ipc_msg_concatenate(&client, msg, ret);
+		if (_muse_core_ipc_msg_complete_confirm(&client, msg, ret) == FALSE)
+			LOGW("%s", client->cache);
 	}
 
 	return ret;
