@@ -28,7 +28,7 @@ extern "C" {
 
 #include <iniparser.h>
 #include "muse_core_module.h"
-#define CONFFILE "/usr/share/mused/mused.conf"
+#define CONFFILE "/etc/multimedia/mused.conf"
 #define HOST_MAX_COUNT 1024
 #define MUSE_MAX_PARAM_NUM 10
 #define MUSE_MAX_PARAM_STRLEN 256

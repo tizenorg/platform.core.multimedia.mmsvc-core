@@ -85,7 +85,6 @@ install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/muse-server.socket
 %{_unitdir}/multi-user.target.wants/muse-server.service
 %{_unitdir}/muse-server.socket
 %{_unitdir}/sockets.target.wants/muse-server.socket
-%{_datadir}/mused/mused.conf
 /usr/bin/*
 
 
