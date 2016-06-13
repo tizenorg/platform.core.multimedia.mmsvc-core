@@ -41,6 +41,9 @@ Requires: pkgconfig(libtbm)
 
 
 %build
+export CFLAGS="$CFLAGS -DSYSCONFDIR=\\\"%{_sysconfdir}\\\""
+export CXXFLAGS="$CXXFLAGS -DSYSCONFDIR=\\\"%{_sysconfdir}\\\""
+
 %if 0%{?sec_build_binary_debug_enable}
 export CFLAGS="$CFLAGS -DTIZEN_DEBUG_ENABLE -D_GNU_SOURCE"
 export CXXFLAGS="$CXXFLAGS -DTIZEN_DEBUG_ENABLE -D_GNU_SOURCE"
@@ -49,7 +52,6 @@ export FFLAGS="$FFLAGS -DTIZEN_DEBUG_ENABLE -D_GNU_SOURCE"
 
 MAJORVER=`echo %{version} | awk 'BEGIN {FS="."}{print $1}'`
 cmake . -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER} -DLIBDIR=%{_libdir}
-
 
 make %{?jobs:-j%jobs}
 
@@ -85,7 +87,6 @@ install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/muse-server.socket
 %{_unitdir}/multi-user.target.wants/muse-server.service
 %{_unitdir}/muse-server.socket
 %{_unitdir}/sockets.target.wants/muse-server.socket
-%{_datadir}/mused/mused.conf
 /usr/bin/*
 
 

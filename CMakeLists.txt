@@ -79,11 +79,9 @@ SET(PC_CFLAGS -I\${includedir}/media)
 CONFIGURE_FILE(
     ${fw_name}.pc.in
     ${CMAKE_CURRENT_SOURCE_DIR}/${fw_name}.pc
-    ${CMAKE_CURRENT_SOURCE_DIR}/config/${fw_name}.conf
     @ONLY
 )
 INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/${fw_name}.pc DESTINATION ${LIBDIR}/pkgconfig)
-INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config/${fw_name}.conf DESTINATION /usr/share/${fw_name})
 
 IF(UNIX)
 
