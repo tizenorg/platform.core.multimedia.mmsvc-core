@@ -20,6 +20,8 @@ BuildRequires:  pkgconfig(libtbm)
 BuildRequires: pkgconfig(cynara-client)
 BuildRequires: pkgconfig(cynara-creds-socket)
 BuildRequires: pkgconfig(cynara-session)
+BuildRequires: pkgconfig(libtzplatform-config)
+
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
@@ -51,7 +53,7 @@ export FFLAGS="$FFLAGS -DTIZEN_DEBUG_ENABLE -D_GNU_SOURCE"
 %endif
 
 MAJORVER=`echo %{version} | awk 'BEGIN {FS="."}{print $1}'`
-cmake . -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER} -DLIBDIR=%{_libdir}
+cmake . -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER} -DLIBDIR=%{_libdir} -DTZ_SYS_DATA=%TZ_SYS_DATA
 
 make %{?jobs:-j%jobs}
 

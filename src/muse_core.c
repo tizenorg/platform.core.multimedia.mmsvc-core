@@ -28,6 +28,7 @@
 #include "muse_core_module.h"
 #include "muse_core_workqueue.h"
 #include "muse_core_security.h"
+#include "muse_core_tool.h"
 
 #define MUSE_LOG_SLEEP_TIMER 10
 
@@ -560,8 +561,15 @@ void muse_core_worker_exit(muse_module_h module)
 		g_thread_unref(module->ch[MUSE_CHANNEL_DATA].p_gthread);
 	MUSE_FREE(module);
 
+	muse_core_tool_recursive_rmdir(MUSE_DATA_ROOT_PATH);
+
 	LOGD("Leave");
 	g_thread_exit(NULL);
+}
+
+const char *muse_core_client_get_directory_path(void)
+{
+	return MUSE_DATA_ROOT_PATH;
 }
 
 unsigned muse_core_get_atomic_uint(void)
