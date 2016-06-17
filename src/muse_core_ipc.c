@@ -109,6 +109,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 					module->disp_api = cmd;
 					case API_CREATE:
 						if (muse_core_msg_json_deserialize(MUSE_MODULE, module->recvMsg + module->msg_offset, &parse_len, &api_module, &err, MUSE_TYPE_INT)) {
+							muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_CREATE_SERVER_ACK);
 							module->api_module = api_module;
 							module->is_create_api_called = true;
 							module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_get_instance()->load(api_module);

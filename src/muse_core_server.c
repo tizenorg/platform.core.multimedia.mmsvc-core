@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 
 	for (index = 0; index < muse_core_config_get_instance()->get_host_cnt(); index++) {
 		if (0 == strcmp(muse_core_config_get_instance()->get_preloaded(index), "yes"))
-			muse_core_module_get_instance()->load(index);
+			muse_core_cmd_dispatch(muse_core_module_get_instance()->load(index), MUSE_MODULE_COMMAND_INITIALIZE);
 	}
 
 	if (muse_core_security_get_instance()->new() < 0) {
