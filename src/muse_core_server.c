@@ -97,8 +97,14 @@ int main(int argc, char **argv)
 		muse_core_tool_parse_params(argc, argv);
 
 	for (index = 0; index < muse_core_config_get_instance()->get_host_cnt(); index++) {
-		if (0 == strcmp(muse_core_config_get_instance()->get_preloaded(index), "yes"))
-			muse_core_module_get_instance()->load(index);
+		if (0 == strcmp(muse_core_config_get_instance()->get_preloaded(index), "yes")) {
+			muse_module_h module = NULL;
+			muse_module_cmd_dispatchfunc *cmd_dispatcher = NULL;
+
+			g_module_symbol(muse_core_module_get_instance()->load(index), CMD_DISPATCHER, (gpointer *)&cmd_dispatcher);
+			if (cmd_dispatcher && cmd_dispatcher[MUSE_MODULE_COMMAND_INITIALIZE])
+				cmd_dispatcher[MUSE_MODULE_COMMAND_INITIALIZE](module);
+		}
 	}
 
 	if (muse_core_security_get_instance()->new() < 0) {
@@ -131,7 +137,7 @@ int main(int argc, char **argv)
 	umask(0);
 
 	result = chdir("/");
-	LOGD("result = %d sid: %5d pgid: %5d pid: %5d ppid: %5d", result, (int)getsid(0), (int)getpgid(0), (int)getpid(), (int)getppid());
+	LOGD("result = %d sid: %d pgid: %d pid: %d ppid: %d", result, (int)getsid(0), (int)getpgid(0), (int)getpid(), (int)getppid());
 
 	return muse_core_run();
 }

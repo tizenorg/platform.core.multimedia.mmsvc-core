@@ -106,6 +106,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 							module->api_module = api_module;
 							module->is_create_api_called = true;
 							module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_get_instance()->load(api_module);
+							muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_CREATE_SERVER_ACK);
 							module->ch[MUSE_CHANNEL_DATA].queue = g_queue_new();
 							g_mutex_init(&module->ch[MUSE_CHANNEL_DATA].mutex);
 							LOGD("module fd: %d dll_handle: %p", module->ch[MUSE_CHANNEL_MSG].fd, module->ch[MUSE_CHANNEL_MSG].dll_handle);
