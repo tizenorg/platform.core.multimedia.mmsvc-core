@@ -66,6 +66,8 @@ extern "C" {
 #define SOCKFILE0 "/tmp/.muse_core_socket"
 #define SOCKFILE1 "/tmp/.muse_core_data_socket"
 
+#define MUSE_DATA_ROOT_PATH TZ_SYS_DATA_PATH"/mused/"
+
 #define READ		0x02
 #define PERSIST	0x10
 #define MAX_ERROR_MSG_LEN	256
