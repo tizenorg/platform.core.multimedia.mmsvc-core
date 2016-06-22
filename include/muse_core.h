@@ -56,6 +56,7 @@ int muse_core_client_set_value(muse_module_h module, const char *value_name, int
 int muse_core_client_get_value(muse_module_h module, const char *value_name, int *get_value);
 void muse_core_client_handle_free(muse_client_h muse_client);
 void muse_core_worker_exit(muse_module_h module);
+const char *muse_core_client_get_directory_path(void);
 unsigned int muse_core_get_atomic_uint(void);
 
 #ifdef __cplusplus
