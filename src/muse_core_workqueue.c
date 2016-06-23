@@ -58,7 +58,10 @@ static void *_muse_core_workqueue_worker_function(void *ptr)
 			continue;
 
 		/* Execute the job. */
-		job->job_function(job);
+		if (job->job_function(job) != TRUE) {
+			LOGE("Error - Execute the job");
+			break;
+		}
 	}
 
 	MUSE_FREE(worker);

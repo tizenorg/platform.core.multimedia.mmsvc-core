@@ -112,6 +112,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 							module->api_module = api_module;
 							module->is_create_api_called = true;
 							module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_get_instance()->load(api_module);
+							muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_CREATE_SERVER_ACK);
 							module->ch[MUSE_CHANNEL_DATA].queue = g_queue_new();
 							g_mutex_init(&module->ch[MUSE_CHANNEL_DATA].mutex);
 							LOGD("module fd: %d dll_handle: %p", module->ch[MUSE_CHANNEL_MSG].fd, module->ch[MUSE_CHANNEL_MSG].dll_handle);
@@ -374,6 +375,7 @@ gboolean muse_core_ipc_job_function(muse_core_workqueue_job_t *job)
 	LOGD("Enter");
 	muse_module_h module = NULL;
 	muse_client_h client = NULL;
+	GError *error = NULL;
 
 	g_return_val_if_fail(job != NULL, FALSE);
 
@@ -387,10 +389,12 @@ gboolean muse_core_ipc_job_function(muse_core_workqueue_job_t *job)
 
 	_muse_core_ipc_client_new(module->ch[MUSE_CHANNEL_MSG].fd, client);
 
-	module->ch[MUSE_CHANNEL_MSG].p_gthread = g_thread_new(NULL, _muse_core_ipc_dispatch_worker, (gpointer)module);
-	g_return_val_if_fail(module->ch[MUSE_CHANNEL_MSG].p_gthread != NULL, FALSE);
+	module->ch[MUSE_CHANNEL_MSG].p_gthread = g_thread_try_new(NULL, _muse_core_ipc_dispatch_worker, (gpointer)module, &error);
+	if (module->ch[MUSE_CHANNEL_MSG].p_gthread == NULL && error)
+		muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_RESOURCE_NOT_AVAILABLE);
 
 	MUSE_FREE(job);
+	g_return_val_if_fail(module->ch[MUSE_CHANNEL_MSG].p_gthread != NULL, FALSE);
 
 	LOGD("Leave");
 	return TRUE;
@@ -400,6 +404,8 @@ gboolean muse_core_ipc_data_job_function(muse_core_workqueue_job_t *job)
 {
 	LOGD("Enter");
 	intptr_t fd;
+	GError *error = NULL;
+	GThread *p_gthread = NULL;
 
 	g_return_val_if_fail(job != NULL, FALSE);
 
@@ -408,9 +414,10 @@ gboolean muse_core_ipc_data_job_function(muse_core_workqueue_job_t *job)
 
 	LOGD("data channel fd : %d", fd);
 
-	g_thread_new(NULL, _muse_core_ipc_data_worker, (gpointer)fd);
+	p_gthread = g_thread_try_new(NULL, _muse_core_ipc_data_worker, GINT_TO_POINTER(fd), &error);
 
 	MUSE_FREE(job);
+	g_return_val_if_fail(p_gthread != NULL, FALSE);
 
 	LOGD("Leave");
 	return TRUE;
