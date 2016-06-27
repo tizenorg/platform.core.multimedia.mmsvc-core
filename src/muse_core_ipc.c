@@ -409,14 +409,14 @@ gboolean muse_core_ipc_job_function(muse_core_workqueue_job_t *job)
 gboolean muse_core_ipc_data_job_function(muse_core_workqueue_job_t *job)
 {
 	LOGD("Enter");
-	intptr_t fd;
+	int fd;
 	GError *error = NULL;
 	GThread *p_gthread = NULL;
 	char fd_name[MAX_ERROR_MSG_LEN];
 
 	g_return_val_if_fail(job != NULL, FALSE);
 
-	fd = (intptr_t) job->user_data;
+	fd = (int)job->user_data;
 	g_return_val_if_fail(fd > 0, FALSE);
 
 	LOGD("data channel fd : %d", fd);
