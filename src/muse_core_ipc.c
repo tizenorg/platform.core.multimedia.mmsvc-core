@@ -421,7 +421,7 @@ gboolean muse_core_ipc_data_job_function(muse_core_workqueue_job_t *job)
 
 	LOGD("data channel fd : %d", fd);
 
-	snprintf(fd_name, sizeof(fd_name), "fd_%d", fd);
+	snprintf(fd_name, sizeof(fd_name), "fd_%d", (int)fd);
 	p_gthread = g_thread_try_new(fd_name, _muse_core_ipc_data_worker, GINT_TO_POINTER(fd), &error);
 
 	MUSE_FREE(job);
