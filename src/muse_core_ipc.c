@@ -416,7 +416,7 @@ gboolean muse_core_ipc_data_job_function(muse_core_workqueue_job_t *job)
 
 	g_return_val_if_fail(job != NULL, FALSE);
 
-	fd = (int)job->user_data;
+	fd = GPOINTER_TO_INT(job->user_data);
 	g_return_val_if_fail(fd > 0, FALSE);
 
 	LOGD("data channel fd : %d", fd);
