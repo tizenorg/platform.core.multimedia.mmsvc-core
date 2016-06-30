@@ -1,4 +1,6 @@
 [Socket]
+SocketUser=multimedia_fw
+SocketGroup=multimedia_fw
 ListenStream=/tmp/.muse_core_socket
 Service=muse-server.service
 

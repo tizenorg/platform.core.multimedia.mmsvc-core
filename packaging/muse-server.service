@@ -4,11 +4,14 @@ After=display-manager.service
 
 [Service]
 Type=forking
+User=multimedia_fw
+Group=multimedia_fw
 ExecStart=/usr/bin/muse-server
 Restart=always
 MemoryLimit=300M
 EnvironmentFile=/run/tizen-system-env
 EnvironmentFile=/run/xdg-root-env
+SupplementaryGroups=priv_mediastorage
 
 [Install]
 WantedBy=multi-user.target
