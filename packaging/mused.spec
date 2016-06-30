@@ -25,6 +25,7 @@ BuildRequires: pkgconfig(libtzplatform-config)
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
+Requires: security-config
 
 %description
 
@@ -74,10 +75,16 @@ mkdir -p %{buildroot}%{_unitdir}/sockets.target.wants
 install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/muse-server.socket
 %install_service sockets.target.wants muse-server.socket
 
+mkdir -p %{buildroot}/var/log/%{name}
 mkdir -p -m 0770 %{buildroot}%{TZ_SYS_DATA}/%{name}
 
 %post
 /sbin/ldconfig
+
+chown multimedia_fw:multimedia_fw %{TZ_SYS_DATA}/%{name}
+chown multimedia_fw:multimedia_fw /var/log/%{name}
+chsmack -a "System::Shared" %{TZ_SYS_DATA}/%{name}
+chsmack -a "System::Shared" /var/log/%{name}
 
 %postun -p /sbin/ldconfig
 
@@ -91,6 +98,7 @@ mkdir -p -m 0770 %{buildroot}%{TZ_SYS_DATA}/%{name}
 %{_unitdir}/muse-server.socket
 %{_unitdir}/sockets.target.wants/muse-server.socket
 %{TZ_SYS_DATA}/%{name}
+/var/log/%{name}
 /usr/bin/*
 
 
