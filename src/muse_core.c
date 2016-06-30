@@ -441,17 +441,15 @@ int muse_core_run()
 
 void muse_core_cmd_dispatch(muse_module_h module, muse_module_command_e cmd)
 {
-	muse_module_cmd_dispatchfunc cmd_dispatcher[MUSE_MODULE_COMMAND_MAX];
-	int idx;
-
-	for (idx = 0; idx < MUSE_MODULE_COMMAND_MAX; idx++)
-		cmd_dispatcher[idx] = NULL;
+	muse_module_cmd_dispatchfunc *cmd_dispatcher = NULL;
 
 	g_return_if_fail(module->ch[MUSE_CHANNEL_MSG].dll_handle != NULL);
 
 	if (g_module_symbol(module->ch[MUSE_CHANNEL_MSG].dll_handle, CMD_DISPATCHER, (gpointer *)&cmd_dispatcher) == TRUE) {
-		if (cmd_dispatcher[cmd])
+		if (cmd_dispatcher && cmd_dispatcher[cmd])
 			cmd_dispatcher[cmd](module);
+		else
+			LOGE("[%d] cmd_dispatcher null", cmd);
 	}
 }
 
@@ -570,7 +568,7 @@ void muse_core_worker_exit(muse_module_h module)
 	g_thread_exit(NULL);
 }
 
-const char *muse_core_client_get_directory_path(void)
+const char *muse_core_client_get_temporal_path(void)
 {
 	return MUSE_DATA_ROOT_PATH;
 }
