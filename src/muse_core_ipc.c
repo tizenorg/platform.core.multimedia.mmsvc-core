@@ -395,6 +395,7 @@ gboolean muse_core_ipc_job_function(muse_core_workqueue_job_t *job)
 	module->ch[MUSE_CHANNEL_MSG].p_gthread = g_thread_try_new(fd_name, _muse_core_ipc_dispatch_worker, (gpointer)module, &error);
 	if (module->ch[MUSE_CHANNEL_MSG].p_gthread == NULL && error) {
 		LOGE("%s %s", fd_name, error->message);
+		g_error_free (error);
 		module->ch[MUSE_CHANNEL_MSG].dll_handle = muse_core_module_get_instance()->load(API_CREATE);
 		muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_RESOURCE_NOT_AVAILABLE);
 	}
@@ -423,6 +424,8 @@ gboolean muse_core_ipc_data_job_function(muse_core_workqueue_job_t *job)
 
 	snprintf(fd_name, sizeof(fd_name), "fd_%d", fd);
 	p_gthread = g_thread_try_new(fd_name, _muse_core_ipc_data_worker, GINT_TO_POINTER(fd), &error);
+	if (error)
+		g_error_free (error);
 
 	MUSE_FREE(job);
 	g_return_val_if_fail(p_gthread != NULL, FALSE);
