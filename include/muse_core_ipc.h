@@ -49,7 +49,9 @@ typedef enum {
 
 gboolean muse_core_ipc_job_function(struct muse_core_workqueue_job * job);
 int muse_core_ipc_send_msg(int sock_fd, const char *msg);
+int muse_core_ipc_send_fd_msg(int sock_fd, int fd, const char *buf, size_t buf_len);
 int muse_core_ipc_recv_msg(int sock_fd, char *msg);
+int muse_core_ipc_recv_fd_msg(int sock_fd, const char *buf, size_t buf_len, int *out_fd);
 int muse_core_ipc_recv_msg_server(int sock_fd, char *msg);
 int muse_core_ipc_recv_msg_client(muse_client_h muse_client, char *msg);
 void muse_core_ipc_set_timeout(int sock_fd, unsigned long timeout_sec);
