@@ -29,7 +29,7 @@
 #include "muse_core_module.h"
 
 #define END_DELIM '}'
-#define RECV_ERR -1
+#define SOCK_ERR -1
 
 typedef struct muse_recv_data_head {
 	unsigned int marker;
@@ -449,12 +449,49 @@ int muse_core_ipc_send_msg(int sock_fd, const char *msg)
 	return ret;
 }
 
+int muse_core_ipc_send_fd_msg(int sock_fd, int fd, const char *buf, size_t buf_len) {
+	int ret = MM_ERROR_NONE;
+	struct msghdr msg;
+	struct iovec iov;
+	muse_cmsg_fd_t cmsg;
+	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
+
+	memset(&iov, 0, sizeof(iov));
+	iov.iov_base = (void*)buf;
+	iov.iov_len = buf_len;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = &cmsg;
+	msg.msg_controllen = sizeof(cmsg);
+	msg.msg_flags = 0;
+
+	struct cmsghdr* cptr = CMSG_FIRSTHDR(&msg);
+
+	cptr->cmsg_len = CMSG_LEN(sizeof(int));
+	cptr->cmsg_level = SOL_SOCKET;
+	cptr->cmsg_type = SCM_RIGHTS;
+
+	memcpy(CMSG_DATA(cptr), &fd, sizeof(int)); /* *((int *) CMSG_DATA(cptr)) = fd; */
+	msg.msg_controllen = cptr->cmsg_len;
+
+	if ((ret = sendmsg(sock_fd, &msg, 0)) == SOCK_ERR) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("fail to send msg (%s)", err_msg);
+	}
+
+	return ret;
+}
+
 int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 {
 	int ret = MM_ERROR_NONE;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 
-	g_return_val_if_fail(msg != NULL, RECV_ERR);
+	g_return_val_if_fail(msg != NULL, SOCK_ERR);
 
 	if ((ret = recv(sock_fd, msg, MUSE_MSG_MAX_LENGTH, 0)) < 0) {
 		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
@@ -466,18 +503,65 @@ int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 	return ret;
 }
 
+int muse_core_ipc_recv_fd_msg(int sock_fd, int *fd, const char *buf, size_t buf_len)
+{
+	int ret = MM_ERROR_NONE;
+	struct msghdr msg;
+	struct iovec iov;
+	muse_cmsg_fd_t cmsg;
+	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
+
+	memset(&iov, 0, sizeof(iov));
+	iov.iov_base = (void*)buf;
+	iov.iov_len = buf_len;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = &cmsg;
+	msg.msg_controllen = sizeof(cmsg);
+	msg.msg_flags = 0;
+
+	if ((ret = recvmsg(sock_fd, &msg, 0)) == SOCK_ERR) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("fail to receive msg (%s)", err_msg);
+	}
+
+	const struct cmsghdr *cptr = CMSG_FIRSTHDR(&msg);
+	g_return_val_if_fail(cptr, SOCK_ERR);
+
+	if (SOL_SOCKET != cptr->cmsg_level) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("cmsg_level is not SOL_SOCKET (%s)", err_msg);
+		return SOCK_ERR;
+	}
+
+	if (SCM_RIGHTS != cptr->cmsg_type) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("cmsg_type is not SCM_RIGHTS (%s)", err_msg);
+		return SOCK_ERR;
+	}
+
+	if (fd)
+		memcpy(fd, CMSG_DATA(cptr), sizeof(int)); /* *fd = *(int*) data; */
+
+	return ret;
+}
+
 int muse_core_ipc_recv_msg_server(int sock_fd, char *msg)
 {
 	int ret = MM_ERROR_NONE;
 	int recv_len = 0;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 
-	g_return_val_if_fail(msg != NULL, RECV_ERR);
+	g_return_val_if_fail(msg != NULL, SOCK_ERR);
 
 	*(g_muse_core_ipc->key) = sock_fd;
 	muse_client_h client = g_hash_table_lookup(g_muse_core_ipc->client_table, g_muse_core_ipc->key);
 
-	g_return_val_if_fail(client != NULL, RECV_ERR);
+	g_return_val_if_fail(client != NULL, SOCK_ERR);
 
 	if (client->cache_len > 0)
 		memcpy(msg, client->cache, client->cache_len);
@@ -506,8 +590,8 @@ int muse_core_ipc_recv_msg_client(muse_client_h client, char *msg)
 	int recv_len = 0;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 
-	g_return_val_if_fail(client != NULL, RECV_ERR);
-	g_return_val_if_fail(msg != NULL, RECV_ERR);
+	g_return_val_if_fail(client != NULL, SOCK_ERR);
+	g_return_val_if_fail(msg != NULL, SOCK_ERR);
 
 	if (client->cache_len > 0)
 		memcpy(msg, client->cache, client->cache_len);
