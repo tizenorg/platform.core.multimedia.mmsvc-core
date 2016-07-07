@@ -4,8 +4,6 @@ After=display-manager.service
 
 [Service]
 Type=forking
-User=multimedia_fw
-Group=multimedia_fw
 ExecStart=/usr/bin/muse-server
 Restart=always
 MemoryLimit=300M
