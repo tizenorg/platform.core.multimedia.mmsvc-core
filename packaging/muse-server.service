@@ -1,17 +1,18 @@
 [Unit]
 Description=muse server
 After=display-manager.service
+After=tbm-drm-auth.service
 
 [Service]
 Type=forking
+User=multimedia_fw
+Group=multimedia_fw
 ExecStart=/usr/bin/muse-server
 Restart=always
 MemoryLimit=300M
 EnvironmentFile=/run/tizen-system-env
 EnvironmentFile=/run/xdg-root-env
 SupplementaryGroups=priv_mediastorage
-CapabilityBoundingSet=~CAP_MAC_ADMIN
-CapabilityBoundingSet=~CAP_MAC_OVERRIDE
 
 [Install]
 WantedBy=multi-user.target
