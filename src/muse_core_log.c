@@ -201,7 +201,7 @@ static void _muse_core_log_create_fd(void)
 	g_muse_core_log->log_fd = _muse_core_log_open_work(file[selected_index]);
 	if (g_muse_core_log->log_fd < 0) {
 		LOGE("couldn't open log file");
-		exit(EXIT_FAILURE);
+		/* exit(EXIT_FAILURE); */
 	}
 
 	return;
