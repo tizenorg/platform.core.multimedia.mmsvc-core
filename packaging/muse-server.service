@@ -10,6 +10,8 @@ MemoryLimit=300M
 EnvironmentFile=/run/tizen-system-env
 EnvironmentFile=/run/xdg-root-env
 SupplementaryGroups=priv_mediastorage
+CapabilityBoundingSet=~CAP_MAC_ADMIN
+CapabilityBoundingSet=~CAP_MAC_OVERRIDE
 
 [Install]
 WantedBy=multi-user.target
