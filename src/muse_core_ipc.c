@@ -179,7 +179,7 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 			LOGE("Out of memory");
 			break;
 		}
-		recvLen = muse_core_ipc_recv_msg(fd, recvBuff + currLen);
+		recvLen = recv(fd, recvBuff + currLen, allocSize - currLen, 0);
 		currLen += recvLen;
 		LOGD("buff %p, recvLen %d, currLen %d, allocSize %d", recvBuff, recvLen, currLen, allocSize);
 		if (recvLen <= 0) {
@@ -592,6 +592,23 @@ char *muse_core_ipc_get_data(muse_module_h module)
 	}
 
 	return NULL;
+}
+
+bool muse_core_ipc_get_data_info(char *data, uint64_t *data_id, int *size)
+{
+	muse_recv_data_t *qData;
+	g_return_if_fail(data);
+
+	qData = (muse_recv_data_t *)(data - sizeof(muse_recv_data_head_t));
+	if (qData && qData->header.marker == MUSE_DATA_HEAD) {
+		if(data_id)
+			*data_id = qData->header.id;
+		if(size)
+			*size = qData->header.size;
+
+		return TRUE;
+	}
+	return FALSE;
 }
 
 intptr_t muse_core_ipc_get_handle(muse_module_h module)
