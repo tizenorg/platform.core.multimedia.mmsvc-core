@@ -56,6 +56,7 @@ void muse_core_ipc_set_timeout(int sock_fd, unsigned long timeout_sec);
 gboolean muse_core_ipc_data_job_function(muse_core_workqueue_job_t * job);
 int muse_core_ipc_push_data(int sock_fd, const char *data, int size, uint64_t data_id);
 char *muse_core_ipc_get_data(muse_module_h module);
+bool muse_core_ipc_get_data_info(char *data, uint64_t *data_id, int *size);
 intptr_t muse_core_ipc_get_handle(muse_module_h module);
 int muse_core_ipc_set_handle(muse_module_h module, intptr_t handle);
 void muse_core_ipc_delete_data(char *data);
