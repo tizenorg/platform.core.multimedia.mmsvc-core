@@ -25,6 +25,7 @@
 #include "muse_core_log.h"
 #include "muse_core_workqueue.h"
 #include "muse_core_security.h"
+#include "muse_core_tool.h"
 #ifndef __USE_GNU
 #define __USE_GNU /* for gregs */
 #endif
@@ -39,7 +40,7 @@
 
 static muse_core_log_t *g_muse_core_log = NULL;
 
-static void _muse_core_log_sig_abort(int signo);
+static void _muse_core_log_sig_abort(int signo, pid_t pid);
 static void _muse_core_log_init_signals(void);
 static int _muse_core_log_fd_set_block(int fd);
 static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg);
@@ -54,7 +55,7 @@ static char *_muse_core_log_get_msg(void);
 static void _muse_core_log_flush_msg(void);
 static void _muse_core_log_free(void);
 
-static void _muse_core_log_sig_abort(int signo)
+static void _muse_core_log_sig_abort(int signo, pid_t pid)
 {
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	if (SIG_ERR == signal(SIGABRT, SIG_DFL)) {
@@ -62,24 +63,33 @@ static void _muse_core_log_sig_abort(int signo)
 		LOGE("SIGABRT handler: %s", err_msg);
 	}
 
-	if (g_muse_core_log) {
+	if (g_muse_core_log && g_muse_core_log->pid != pid) {
 		static char client_buf[256];
-		snprintf(client_buf, sizeof(client_buf), "[client name] %s", muse_core_config_get_instance()->get_host(muse_core_module_get_instance()->api_module));
+
+		snprintf(client_buf, sizeof(client_buf), "[pid] %lu", (unsigned long) pid);
 		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
-			LOGE("There was an error writing client name to logfile");
+			LOGE("There was an error writing client pid to logfile");
 		else if (write(g_muse_core_log->log_fd, "\n", 1) != WRITE_FAIL)
 			LOGE("write %s", client_buf);
 
-		snprintf(client_buf, sizeof(client_buf), "[client pid] %lu", (unsigned long) getpid());
-		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
-			LOGE("There was an error writing client pid to logfile");
-		else if (write(g_muse_core_log->log_fd, "\n", 1) == WRITE_FAIL)
+		sprintf(client_buf, "/proc/%d/cmdline",pid);
+		FILE *fp = fopen(client_buf, "r");
+		if (fp) {
+			size_t size = fread(client_buf, sizeof(char), MAX_ERROR_MSG_LEN, fp);
+			client_buf[size-1]='\0';
+
+			if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
+			LOGE("There was an error writing client name to logfile");
+			else if (write(g_muse_core_log->log_fd, "\n", 1) != WRITE_FAIL)
 			LOGE("write %s", client_buf);
+
+			fclose(fp);
+		}
 
 		snprintf(client_buf, sizeof(client_buf), "[client's latest called api] %s", _muse_core_log_get_msg());
 		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
 			LOGE("There was an error writing client's latest called api to logfile");
-		else if (write(g_muse_core_log->log_fd, "\n", 1) == WRITE_FAIL)
+		else if (write(g_muse_core_log->log_fd, "\n", 1) != WRITE_FAIL)
 			LOGE("write %s", client_buf);
 	}
 
@@ -162,7 +172,7 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 
 	LOGE("----------END MUSE DYING MESSAGE----------");
 
-	_muse_core_log_sig_abort(signo);
+	_muse_core_log_sig_abort(signo, si->si_pid);
 }
 
 static int _muse_core_log_open_work(const char *path)
@@ -202,6 +212,7 @@ static void _muse_core_log_create_fd(void)
 	if (g_muse_core_log->log_fd < 0) {
 		LOGE("couldn't open log file");
 		/* exit(EXIT_FAILURE); */
+		muse_core_tool_recursive_rmdir(LOGFILE);
 	}
 
 	return;
@@ -236,7 +247,7 @@ static void _muse_core_log_init_instance(void (*log)(char *), void (*fatal)(char
 	memset(g_muse_core_log->cache, 0, MUSE_MSG_MAX_LENGTH);
 	g_muse_core_log->log = log;
 	g_muse_core_log->fatal = fatal;
-	g_muse_core_log->count = 0;
+	g_muse_core_log->pid = 0;
 	g_muse_core_log->set_msg = set_msg;
 	g_muse_core_log->get_msg = get_msg;
 	g_muse_core_log->flush_msg = flush_msg;

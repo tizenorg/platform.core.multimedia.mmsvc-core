@@ -81,18 +81,21 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 	int len, parse_len, cmd, api_module;
 	muse_module_h module = NULL;
 	muse_core_msg_parse_err_e err = MUSE_MSG_PARSE_ERROR_NONE;
+	gboolean value = true;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	g_return_val_if_fail(data != NULL, NULL);
 
 	module = (muse_module_h)data;
 	g_return_val_if_fail(module != NULL, NULL);
 
+	LOGD("Enter");
+
 	while (1) {
 		memset(module->recvMsg, 0x00, sizeof(module->recvMsg));
 		len = muse_core_ipc_recv_msg(module->ch[MUSE_CHANNEL_MSG].fd, module->recvMsg);
 		if (len <= 0) {
 			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
-			LOGE("recv : %s (%d)", err_msg, errno);
+			LOGE("[%s] recv : %s (%d)", muse_core_config_get_instance()->get_host(module->api_module), err_msg, errno);
 			muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_SHUTDOWN);
 			_muse_core_ipc_client_cleanup(module);
 		} else {
@@ -126,8 +129,8 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 						_muse_core_ipc_client_cleanup(module);
 						break;
 					default:
-						if (muse_core_module_get_instance()->get_dllsymbol_loaded_value(module->api_module) == false) {
-							LOGE("Please check whether it has really intended to not call the create api");
+						if ((value = muse_core_module_get_instance()->get_dllsymbol_loaded_value(module->api_module)) == false) {
+							LOGE("### >>>  Please check whether it has really intended to not call the create api [module %p]", module);
 							module->is_create_api_called = false;
 							if (muse_core_msg_json_deserialize(MUSE_MODULE, module->recvMsg + module->msg_offset, &parse_len, &api_module, &err, MUSE_TYPE_INT)) {
 								module->api_module = api_module;
@@ -137,8 +140,10 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 							}
 						}
 						muse_core_module_get_instance()->dispatch(cmd, module);
-						if (module->is_create_api_called == false)
+						if (module->is_create_api_called == false) {
+							LOGE("<<< ### _muse_core_ipc_client_cleanup [module %p] [get_dllsymbol_loaded_value %d]", module, value);
 							_muse_core_ipc_client_cleanup(module);
+						}
 						break;
 					}
 				} else {
@@ -169,6 +174,8 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 	int allocSize = 0;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	g_return_val_if_fail(fd > 0, NULL);
+
+	LOGD("Enter");
 
 	while (1) {
 		if (!recvBuff) {
@@ -475,7 +482,7 @@ int muse_core_ipc_send_fd_msg(int sock_fd, int fd, const char *buf, size_t buf_l
 	cptr->cmsg_level = SOL_SOCKET;
 	cptr->cmsg_type = SCM_RIGHTS;
 
-	memcpy(CMSG_DATA(cptr), &fd, sizeof(int)); /* *((int *) CMSG_DATA(cptr)) = fd; */
+	memcpy(CMSG_DATA(cptr), &fd, sizeof(int));
 	msg.msg_controllen = cptr->cmsg_len;
 
 	if ((ret = sendmsg(sock_fd, &msg, 0)) == SOCK_ERR) {
@@ -545,7 +552,7 @@ int muse_core_ipc_recv_fd_msg(int sock_fd, int *fd, const char *buf, size_t buf_
 	}
 
 	if (fd)
-		memcpy(fd, CMSG_DATA(cptr), sizeof(int)); /* *fd = *(int*) data; */
+		memcpy(fd, CMSG_DATA(cptr), sizeof(int));
 
 	return ret;
 }

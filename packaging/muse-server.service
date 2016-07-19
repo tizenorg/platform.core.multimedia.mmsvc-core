@@ -12,7 +12,7 @@ Restart=always
 MemoryLimit=300M
 EnvironmentFile=/run/tizen-system-env
 EnvironmentFile=/run/xdg-root-env
-SupplementaryGroups=priv_mediastorage
+SupplementaryGroups=priv_mediastorage priv_camera
 
 [Install]
 WantedBy=multi-user.target
