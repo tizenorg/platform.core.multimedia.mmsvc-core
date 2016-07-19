@@ -53,13 +53,12 @@ typedef struct muse_core_channel_info {
 
 typedef struct muse_module {
 	muse_core_channel_info_t ch[MUSE_CHANNEL_MAX];
-	char recvMsg[MUSE_MSG_MAX_LENGTH];
+	char recvMsg[MUSE_MSG_MAX_LENGTH + 1];
 	int msg_offset;
 	int api_module;
 	int disp_api;
 	gpointer usr_data;
 	intptr_t handle;
-	gboolean is_create_api_called; /* If false, corresponding to the static function */
 } muse_module_t;
 
 typedef struct muse_cmsg_fd {
@@ -70,7 +69,7 @@ typedef struct muse_cmsg_fd {
 typedef struct muse_client {
 	int fd;
 	size_t cache_len;
-	char cache[MUSE_MSG_MAX_LENGTH * 2];
+	char cache[MUSE_MSG_MAX_LENGTH * 2 + 1];
 	gboolean is_ever_broken;
 } muse_client_t;
 

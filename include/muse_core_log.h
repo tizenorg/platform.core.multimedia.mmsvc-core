@@ -33,9 +33,9 @@ typedef struct muse_core_log {
 	int type;
 	char *buf;
 	size_t size;
-	char cache[MUSE_MSG_MAX_LENGTH];
+	char cache[MUSE_MSG_MAX_LENGTH + 1];
 	int log_fd;
-	int count;
+	pid_t pid;
 	void (*log)(char *);
 	void (*fatal)(char *);
 	void (*set_msg) (char *);

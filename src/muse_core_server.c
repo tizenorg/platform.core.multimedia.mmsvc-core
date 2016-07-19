@@ -81,7 +81,7 @@ static void _muse_core_server_gst_init(char **cmd)
 int main(int argc, char **argv)
 {
 	int result;
-	pid_t pid, sid;
+	pid_t pid;
 	int index;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 
@@ -127,9 +127,9 @@ int main(int argc, char **argv)
 	}
 
 	/* create new session */
-	sid = setsid();
-	if (sid < 0) {
-		LOGE("SID : %d, PID CLOSE!!", sid);
+	muse_core_log_get_instance()->pid = setsid();
+	if (muse_core_log_get_instance()->pid < 0) {
+		LOGE("SID : %d, PID CLOSE!!", muse_core_log_get_instance()->pid);
 		exit(0);
 	}
 
