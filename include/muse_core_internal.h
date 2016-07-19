@@ -58,6 +58,7 @@ extern "C" {
 #include <fcntl.h>
 #include <pthread.h>
 #include <mm_error.h>
+#include <dirent.h>
 
 #undef LOG_TAG
 #define LOG_TAG "TIZEN_N_MUSED"
@@ -65,7 +66,7 @@ extern "C" {
 #define LOCKFILE "/tmp/.muse_core.lock"
 #define SOCKFILE0 "/tmp/.muse_core_socket"
 #define SOCKFILE1 "/tmp/.muse_core_data_socket"
-
+#define MUSE_SERVER_READY "/tmp/.muse_server_ready"
 #define MUSE_DATA_ROOT_PATH TZ_SYS_DATA_PATH"/mused/"
 
 #define READ		0x02
@@ -73,6 +74,7 @@ extern "C" {
 #define MAX_ERROR_MSG_LEN	256
 
 #define DISPATCHER "dispatcher"
+#define DISPATCHER_PTR "dispatcher_pointer"
 #define CMD_DISPATCHER "cmd_dispatcher"
 #define MUSE_FREE(src) { if (src) {g_free(src); src = NULL;} }
 

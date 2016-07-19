@@ -57,7 +57,6 @@ static int _muse_core_set_nonblocking(int fd, bool value)
 
 	if (flags >= 0) {
 		flags = value ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
-
 		if (fcntl(fd, F_SETFL, flags) == -1) {
 			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
 			LOGE("fcntl (%d, F_SETFL) %s", fd, err_msg);
@@ -180,6 +179,8 @@ static int _muse_core_free(muse_core_t *server)
 
 	retval = server->retval;
 	close(server->fd);
+	if (server->data_fd > 0)
+		close(server->data_fd);
 	for (i = 0; i < MUSE_CHANNEL_MAX; i++)
 		remove(UDS_files[i]);
 	remove(LOCKFILE);
@@ -198,6 +199,7 @@ static int _muse_core_server_new(muse_core_channel_e channel)
 	int fd;
 	struct sockaddr_un addr_un;
 	socklen_t address_len;
+	int is_reuse = true;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 
 	if (channel >= MUSE_CHANNEL_MAX)
@@ -219,6 +221,14 @@ static int _muse_core_server_new(muse_core_channel_e channel)
 	addr_un.sun_family = AF_UNIX;
 	strncpy(addr_un.sun_path, UDS_files[channel], sizeof(addr_un.sun_path));
 	address_len = sizeof(addr_un);
+
+	/* so we can restart our server quickly */
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &is_reuse, sizeof(is_reuse)) < 0 ) {
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("bind failed sock: %s", err_msg);
+		close(fd);
+		return -1;
+	}
 
 	/* Bind to filename */
 	if (bind(fd, (struct sockaddr *)&addr_un, sizeof(addr_un)) < 0) {
@@ -294,6 +304,7 @@ static gboolean _muse_core_connection_handler(GIOChannel *source, GIOCondition c
 	LOGD("Leave");
 	return TRUE;
 out:
+	close(server_sockfd);
 	close(client_sockfd);
 	MUSE_FREE(module);
 	MUSE_FREE(job);
@@ -337,8 +348,9 @@ static int _muse_core_client_new(muse_core_channel_e channel)
 		LOGE("Error - fd (%d) set nonblocking", sockfd);
 
 	if ((ret = connect(sockfd, (struct sockaddr *)&address, len)) < 0) {
-		LOGE("connect failure");
-		(void) close(sockfd);
+		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
+		LOGE("connect failure %s", err_msg);
+		close(sockfd);
 		return ret;
 	}
 
@@ -432,6 +444,11 @@ int muse_core_run()
 		return 1;
 	}
 
+	if (creat(MUSE_SERVER_READY, 0644) != -1)
+		LOGD("MUSE_SERVER_READY(%s) file was created", MUSE_SERVER_READY);
+	else
+		LOGE("Fail to create MUSE_SERVER_READY(%s)", MUSE_SERVER_READY);
+
 	LOGD("g_main_loop_run");
 	g_main_loop_run(g_loop);
 
@@ -443,9 +460,8 @@ void muse_core_cmd_dispatch(muse_module_h module, muse_module_command_e cmd)
 {
 	muse_module_cmd_dispatchfunc *cmd_dispatcher = NULL;
 
-	g_return_if_fail(module->ch[MUSE_CHANNEL_MSG].dll_handle != NULL);
-
-	if (g_module_symbol(module->ch[MUSE_CHANNEL_MSG].dll_handle, CMD_DISPATCHER, (gpointer *)&cmd_dispatcher) == TRUE) {
+	if (module->ch[MUSE_CHANNEL_MSG].dll_handle &&
+		g_module_symbol(module->ch[MUSE_CHANNEL_MSG].dll_handle, CMD_DISPATCHER, (gpointer *)&cmd_dispatcher) == TRUE) {
 		if (cmd_dispatcher && cmd_dispatcher[cmd])
 			cmd_dispatcher[cmd](module);
 		else
@@ -516,7 +532,7 @@ int muse_core_client_set_value(muse_module_h module, const char *value_name, int
 {
 	g_return_val_if_fail(module, MM_ERROR_INVALID_ARGUMENT);
 	g_return_val_if_fail(value_name, MM_ERROR_INVALID_ARGUMENT);
-	muse_core_module_get_instance()->set_value(module->api_module, value_name, set_value);
+	muse_core_module_get_instance()->set_value(module->api_module, value_name, GINT_TO_POINTER(set_value));
 	return MM_ERROR_NONE;
 }
 
@@ -526,7 +542,13 @@ int muse_core_client_get_value(muse_module_h module, const char *value_name, int
 	g_return_val_if_fail(value_name, MM_ERROR_INVALID_ARGUMENT);
 	g_return_val_if_fail(get_value, MM_ERROR_INVALID_ARGUMENT);
 
-	return muse_core_module_get_instance()->get_value(module->api_module, value_name, get_value);
+	int ret = MM_ERROR_NONE;
+	gpointer value = &ret;
+
+	ret = muse_core_module_get_instance()->get_value(module->api_module, value_name, &value);
+	if (ret == MM_ERROR_NONE)
+		*get_value = GPOINTER_TO_INT(value);
+	return ret;
 }
 
 void muse_core_connection_close(int sock_fd)
@@ -551,7 +573,9 @@ void muse_core_worker_exit(muse_module_h module)
 	LOGD("Enter");
 	g_return_if_fail(module);
 
+	LOGD("[close] MUSE_CHANNEL_MSG %p", module);
 	muse_core_connection_close(module->ch[MUSE_CHANNEL_MSG].fd);
+	LOGD("[close] MUSE_CHANNEL_DATA %p", module);
 	muse_core_connection_close(module->ch[MUSE_CHANNEL_DATA].fd);
 
 	LOGD("%p thread exit", module->ch[MUSE_CHANNEL_MSG].p_gthread);

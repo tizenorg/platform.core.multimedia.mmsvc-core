@@ -23,23 +23,29 @@
 #include "muse_core_config.h"
 #include "muse_core_ipc.h"
 #include "muse_core_log.h"
+#include "muse_core_module.h"
 #include "muse_core_workqueue.h"
 #include "muse_core_security.h"
+#include "muse_core_tool.h"
 #ifndef __USE_GNU
 #define __USE_GNU /* for gregs */
 #endif
 #include <ucontext.h>
 #include <sys/ioctl.h>
 #include <linux/fs.h>
+#define _GNU_SOURCE
+#include <dlfcn.h>
 #define TUNABLE_CALLER_DEPTH 32
 #define U32BITS 0xffffffff
 #define MAX_FILE_NUM 3
 #define MAX_SIZE 33554432
 #define WRITE_FAIL -1
+#define BUILD_ID "BUILD_ID"
+#define delimiter "="
 
 static muse_core_log_t *g_muse_core_log = NULL;
 
-static void _muse_core_log_sig_abort(int signo);
+static void _muse_core_log_sig_abort(int signo, pid_t pid);
 static void _muse_core_log_init_signals(void);
 static int _muse_core_log_fd_set_block(int fd);
 static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg);
@@ -54,7 +60,7 @@ static char *_muse_core_log_get_msg(void);
 static void _muse_core_log_flush_msg(void);
 static void _muse_core_log_free(void);
 
-static void _muse_core_log_sig_abort(int signo)
+static void _muse_core_log_sig_abort(int signo, pid_t pid)
 {
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	if (SIG_ERR == signal(SIGABRT, SIG_DFL)) {
@@ -63,24 +69,77 @@ static void _muse_core_log_sig_abort(int signo)
 	}
 
 	if (g_muse_core_log) {
-		static char client_buf[256];
-		snprintf(client_buf, sizeof(client_buf), "[client name] %s", muse_core_config_get_instance()->get_host(muse_core_module_get_instance()->api_module));
-		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
-			LOGE("There was an error writing client name to logfile");
-		else if (write(g_muse_core_log->log_fd, "\n", 1) != WRITE_FAIL)
-			LOGE("write %s", client_buf);
+		char client_buf[MAX_ERROR_MSG_LEN];
 
-		snprintf(client_buf, sizeof(client_buf), "[client pid] %lu", (unsigned long) getpid());
+		/* pid */
+		snprintf(client_buf, sizeof(client_buf), "[PID] %d", (int) pid);
 		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
 			LOGE("There was an error writing client pid to logfile");
-		else if (write(g_muse_core_log->log_fd, "\n", 1) == WRITE_FAIL)
-			LOGE("write %s", client_buf);
+		else if (write(g_muse_core_log->log_fd, "\n", 1) != WRITE_FAIL)
+			LOGE("%s", client_buf);
 
-		snprintf(client_buf, sizeof(client_buf), "[client's latest called api] %s", _muse_core_log_get_msg());
-		if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
-			LOGE("There was an error writing client's latest called api to logfile");
-		else if (write(g_muse_core_log->log_fd, "\n", 1) == WRITE_FAIL)
-			LOGE("write %s", client_buf);
+		/* cmdline */
+		sprintf(client_buf, "/proc/%d/cmdline", (int) pid);
+		FILE *fp = fopen(client_buf, "r");
+		if (fp) {
+			size_t size = fread(client_buf, sizeof(char), MAX_ERROR_MSG_LEN, fp);
+			client_buf[size] = '\0';
+
+			if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
+				LOGE("There was an error writing client name to logfile");
+			else if (write(g_muse_core_log->log_fd, "\n", 1) != WRITE_FAIL)
+				LOGE("[Process Name] %s", client_buf);
+
+			fclose(fp);
+		}
+
+		/* process info */
+		sprintf(client_buf, "ps -Lo pcpu,pmem,tid,comm -p %d", (int) pid);
+		fp = popen(client_buf, "r");
+		if (fp) {
+			if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
+				LOGE("muse-server %d writing command to logfile", (int) pid);
+			else if (write(g_muse_core_log->log_fd, "\n", 1) == WRITE_FAIL)
+				LOGE("Fail to write process command");
+
+			while (fgets(client_buf, MAX_ERROR_MSG_LEN, fp)) {
+				if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
+					LOGE("Fail to write command info to logfile");
+			}
+			if (pclose(fp) != MM_ERROR_NONE)
+				LOGE("Fail to pclose");
+		}
+
+		/* api info */
+		Dl_info info;
+		memset(&info, 0, sizeof(info));
+		int i = 0;
+		gpointer ptr = &i;
+		for ( ; i < MUSE_MODULE_MAX; i++) {
+			muse_core_module_get_instance()->get_value(i, DISPATCHER_PTR, &ptr);
+			if(dladdr((const void *) ptr, &info) && info.dli_sname) {
+				snprintf(client_buf, sizeof(client_buf), "[The latest called api name] %s [The latest message] %s", info.dli_sname, _muse_core_log_get_msg());
+				if (write(g_muse_core_log->log_fd, client_buf, strlen(client_buf)) == WRITE_FAIL)
+					LOGE("There was an error writing client's latest called api to logfile");
+				else if (write(g_muse_core_log->log_fd, "\n", 1) != WRITE_FAIL)
+					LOGE("%s", client_buf);
+			}
+		}
+
+		/* binary version */
+		sprintf(client_buf, "/etc/tizen-release");
+		fp = fopen(client_buf, "r");
+		if (fp) {
+			while(fgets(client_buf, MAX_ERROR_MSG_LEN, fp)) {
+				char *label = strtok(client_buf, delimiter);
+				char *value = strtok(NULL, delimiter);
+				if(strcmp(label, BUILD_ID) == 0) {
+					if (write(g_muse_core_log->log_fd, value, strlen(value)) != WRITE_FAIL)
+						LOGE("[%s] %s", BUILD_ID, value);
+				}
+			}
+			fclose(fp);
+		}
 	}
 
 	LOGD("signo(%d)", signo);
@@ -153,16 +212,15 @@ static void _muse_core_log_sigaction(int signo, siginfo_t *si, void *arg)
 		LOGE("backtrace_symbols error: %s", err_msg);
 	} else {
 		/* skip the first stack frame because it just points here. */
-		for (i = 1; i < tracesize; ++i) {
+		for (i = 1; i < tracesize; ++i)
 			LOGE("[%u] %s", i - 1, strings[i]);
-			if (g_muse_core_log)
-				g_muse_core_log->fatal(strings[i]);
-		}
+
+		MUSE_FREE(strings);
 	}
 
 	LOGE("----------END MUSE DYING MESSAGE----------");
 
-	_muse_core_log_sig_abort(signo);
+	_muse_core_log_sig_abort(signo, si->si_pid);
 }
 
 static int _muse_core_log_open_work(const char *path)
@@ -231,12 +289,11 @@ static void _muse_core_log_init_instance(void (*log)(char *), void (*fatal)(char
 
 	g_muse_core_log = calloc(1, sizeof(*g_muse_core_log));
 	g_return_if_fail(g_muse_core_log != NULL);
-	g_muse_core_log->buf = NULL;
+	memset(g_muse_core_log->buf, 0, MUSE_MSG_MAX_LENGTH + 1);
 	g_muse_core_log->size = 0;
-	memset(g_muse_core_log->cache, 0, MUSE_MSG_MAX_LENGTH);
+	memset(g_muse_core_log->cache, 0, MUSE_MSG_MAX_LENGTH + 1);
 	g_muse_core_log->log = log;
 	g_muse_core_log->fatal = fatal;
-	g_muse_core_log->count = 0;
 	g_muse_core_log->set_msg = set_msg;
 	g_muse_core_log->get_msg = get_msg;
 	g_muse_core_log->flush_msg = flush_msg;
@@ -265,7 +322,7 @@ static void _muse_core_log_monitor(char *msg)
 		_muse_core_log_write_buffer(msg, strlen(msg));
 	} else {
 		if (write(g_muse_core_log->log_fd, g_muse_core_log->cache, strlen(g_muse_core_log->cache)) != WRITE_FAIL) {
-			memset(g_muse_core_log->cache, 0, MUSE_MSG_MAX_LENGTH);
+			memset(g_muse_core_log->cache, 0, MUSE_MSG_MAX_LENGTH + 1);
 			_muse_core_log_write_buffer(msg, strlen(msg));
 		}
 	}
@@ -295,7 +352,10 @@ static void _muse_core_log_set_msg(char *msg)
 	g_return_if_fail(g_muse_core_log != NULL);
 	g_return_if_fail(msg != NULL);
 
-	g_muse_core_log->buf = msg;
+	size_t size = strlen(msg);
+
+	memcpy(g_muse_core_log->buf, msg, size);
+	memcpy(g_muse_core_log->buf + size, "\0", 1);
 }
 
 static char *_muse_core_log_get_msg(void)
