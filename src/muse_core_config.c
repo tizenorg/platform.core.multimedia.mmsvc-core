@@ -89,13 +89,13 @@ static int _muse_core_config_parser(void)
 	host = strtok_r(g_muse_core_conf->hosts, COMMA, &ptr);
 
 	while (host != NULL) {
+		g_strstrip(host);
 		g_muse_core_conf->host[g_muse_core_conf->type] = strdup(host);
 		LOGD("host: %s", g_muse_core_conf->host[g_muse_core_conf->type]);
 		char *host_name = (char *) malloc(HOST_MAX_COUNT);
 		if (!host_name) {
 			LOGE("Error - null host_name");
 			_muse_core_config_free();
-			MUSE_FREE(host_name);
 			return ret;
 		}
 

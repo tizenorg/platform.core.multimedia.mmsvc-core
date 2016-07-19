@@ -31,11 +31,11 @@ extern "C" {
 
 typedef struct muse_core_log {
 	int type;
-	char *buf;
+	char buf[MUSE_MSG_MAX_LENGTH + 1];
+	pid_t pid;
 	size_t size;
-	char cache[MUSE_MSG_MAX_LENGTH];
+	char cache[MUSE_MSG_MAX_LENGTH + 1];
 	int log_fd;
-	int count;
 	void (*log)(char *);
 	void (*fatal)(char *);
 	void (*set_msg) (char *);

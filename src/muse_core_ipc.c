@@ -81,18 +81,21 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 	int len, parse_len, cmd, api_module;
 	muse_module_h module = NULL;
 	muse_core_msg_parse_err_e err = MUSE_MSG_PARSE_ERROR_NONE;
+	gboolean value = true;
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	g_return_val_if_fail(data != NULL, NULL);
 
 	module = (muse_module_h)data;
 	g_return_val_if_fail(module != NULL, NULL);
 
+	LOGD("Enter");
+
 	while (1) {
 		memset(module->recvMsg, 0x00, sizeof(module->recvMsg));
 		len = muse_core_ipc_recv_msg(module->ch[MUSE_CHANNEL_MSG].fd, module->recvMsg);
 		if (len <= 0) {
 			strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
-			LOGE("recv : %s (%d)", err_msg, errno);
+			LOGE("[%s] recv : %s (%d)", muse_core_config_get_instance()->get_host(module->api_module), err_msg, errno);
 			muse_core_cmd_dispatch(module, MUSE_MODULE_COMMAND_SHUTDOWN);
 			_muse_core_ipc_client_cleanup(module);
 		} else {
@@ -108,7 +111,7 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 					switch (cmd) {
 					module->disp_api = cmd;
 					case API_CREATE:
-						LOGD("CREATE");
+						LOGD("CREATE ### %p", module);
 						if (muse_core_msg_json_deserialize(MUSE_MODULE, module->recvMsg + module->msg_offset, &parse_len, &api_module, &err, MUSE_TYPE_INT)) {
 							module->api_module = api_module;
 							module->is_create_api_called = true;
@@ -121,13 +124,13 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 						}
 						break;
 					case API_DESTROY:
-						LOGD("DESTROY");
+						LOGD("DESTROY %p", module);
 						muse_core_module_get_instance()->dispatch(cmd, module);
 						_muse_core_ipc_client_cleanup(module);
 						break;
 					default:
-						if (muse_core_module_get_instance()->get_dllsymbol_loaded_value(module->api_module) == false) {
-							LOGE("Please check whether it has really intended to not call the create api");
+						if ((value = muse_core_module_get_instance()->get_dllsymbol_loaded_value(module->api_module)) == false) {
+							LOGE("### >>>  Please check whether it has really intended to not call the create api [module %p]", module);
 							module->is_create_api_called = false;
 							if (muse_core_msg_json_deserialize(MUSE_MODULE, module->recvMsg + module->msg_offset, &parse_len, &api_module, &err, MUSE_TYPE_INT)) {
 								module->api_module = api_module;
@@ -137,8 +140,10 @@ static gpointer _muse_core_ipc_dispatch_worker(gpointer data)
 							}
 						}
 						muse_core_module_get_instance()->dispatch(cmd, module);
-						if (module->is_create_api_called == false)
+						if (module->is_create_api_called == false) {
+							LOGE("<<< ### _muse_core_ipc_client_cleanup [module %p] [get_dllsymbol_loaded_value %d]", module, value);
 							_muse_core_ipc_client_cleanup(module);
+						}
 						break;
 					}
 				} else {
@@ -170,6 +175,8 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 	char err_msg[MAX_ERROR_MSG_LEN] = {'\0',};
 	g_return_val_if_fail(fd > 0, NULL);
 
+	LOGD("Enter");
+
 	while (1) {
 		if (!recvBuff) {
 			allocSize = MUSE_MSG_MAX_LENGTH;
@@ -179,7 +186,7 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 			LOGE("Out of memory");
 			break;
 		}
-		recvLen = muse_core_ipc_recv_msg(fd, recvBuff + currLen);
+		recvLen = recv(fd, recvBuff + currLen, allocSize - currLen, 0);
 		currLen += recvLen;
 		LOGD("buff %p, recvLen %d, currLen %d, allocSize %d", recvBuff, recvLen, currLen, allocSize);
 		if (recvLen <= 0) {
@@ -189,6 +196,7 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 		} else {
 			if (module) {
 				muse_recv_data_t *qData;
+				module->ch[MUSE_CHANNEL_DATA].fd = fd;
 				while ((qData = _muse_core_ipc_new_qdata(&recvBuff, currLen, &allocSize)) != NULL) {
 					int qDataSize = qData->header.size + sizeof(muse_recv_data_head_t);
 					if (currLen > qDataSize) {
@@ -217,6 +225,7 @@ static gpointer _muse_core_ipc_data_worker(gpointer data)
 					if (module) {
 						module->ch[MUSE_CHANNEL_DATA].p_gthread = g_thread_self();
 						g_return_val_if_fail(module->ch[MUSE_CHANNEL_DATA].p_gthread != NULL, NULL);
+						module->ch[MUSE_CHANNEL_DATA].fd = fd;
 					}
 				}
 				MUSE_FREE(recvBuff);
@@ -391,7 +400,7 @@ gboolean muse_core_ipc_job_function(muse_core_workqueue_job_t *job)
 
 	_muse_core_ipc_client_new(module->ch[MUSE_CHANNEL_MSG].fd, client);
 
-	snprintf(fd_name, sizeof(fd_name), "fd_%d", module->ch[MUSE_CHANNEL_MSG].fd);
+	snprintf(fd_name, sizeof(fd_name), "%d_fd_%d", (int)getpid(), module->ch[MUSE_CHANNEL_MSG].fd);
 	module->ch[MUSE_CHANNEL_MSG].p_gthread = g_thread_try_new(fd_name, _muse_core_ipc_dispatch_worker, (gpointer)module, &error);
 	if (module->ch[MUSE_CHANNEL_MSG].p_gthread == NULL && error) {
 		LOGE("%s %s", fd_name, error->message);
@@ -422,7 +431,7 @@ gboolean muse_core_ipc_data_job_function(muse_core_workqueue_job_t *job)
 
 	LOGD("data channel fd : %d", fd);
 
-	snprintf(fd_name, sizeof(fd_name), "fd_%d", fd);
+	snprintf(fd_name, sizeof(fd_name), "%d_fd_%d", (int)getpid(), fd);
 	p_gthread = g_thread_try_new(fd_name, _muse_core_ipc_data_worker, GINT_TO_POINTER(fd), &error);
 	if (error)
 		g_error_free (error);
@@ -451,6 +460,7 @@ int muse_core_ipc_send_msg(int sock_fd, const char *msg)
 
 int muse_core_ipc_send_fd_msg(int sock_fd, int fd, const char *buf, size_t buf_len) {
 	int ret = MM_ERROR_NONE;
+	struct cmsghdr *cptr;
 	struct msghdr msg;
 	struct iovec iov;
 	muse_cmsg_fd_t cmsg;
@@ -469,13 +479,13 @@ int muse_core_ipc_send_fd_msg(int sock_fd, int fd, const char *buf, size_t buf_l
 	msg.msg_controllen = sizeof(cmsg);
 	msg.msg_flags = 0;
 
-	struct cmsghdr* cptr = CMSG_FIRSTHDR(&msg);
+	cptr = CMSG_FIRSTHDR(&msg);
 
 	cptr->cmsg_len = CMSG_LEN(sizeof(int));
 	cptr->cmsg_level = SOL_SOCKET;
 	cptr->cmsg_type = SCM_RIGHTS;
 
-	memcpy(CMSG_DATA(cptr), &fd, sizeof(int)); /* *((int *) CMSG_DATA(cptr)) = fd; */
+	memcpy(CMSG_DATA(cptr), &fd, sizeof(int));
 	msg.msg_controllen = cptr->cmsg_len;
 
 	if ((ret = sendmsg(sock_fd, &msg, 0)) == SOCK_ERR) {
@@ -503,9 +513,10 @@ int muse_core_ipc_recv_msg(int sock_fd, char *msg)
 	return ret;
 }
 
-int muse_core_ipc_recv_fd_msg(int sock_fd, int *fd, const char *buf, size_t buf_len)
+int muse_core_ipc_recv_fd_msg(int sock_fd, const char *buf, size_t buf_len, int *out_fd)
 {
 	int ret = MM_ERROR_NONE;
+	const struct cmsghdr *cptr;
 	struct msghdr msg;
 	struct iovec iov;
 	muse_cmsg_fd_t cmsg;
@@ -529,7 +540,7 @@ int muse_core_ipc_recv_fd_msg(int sock_fd, int *fd, const char *buf, size_t buf_
 		LOGE("fail to receive msg (%s)", err_msg);
 	}
 
-	const struct cmsghdr *cptr = CMSG_FIRSTHDR(&msg);
+	cptr = CMSG_FIRSTHDR(&msg);
 	g_return_val_if_fail(cptr, SOCK_ERR);
 
 	if (SOL_SOCKET != cptr->cmsg_level) {
@@ -544,8 +555,8 @@ int muse_core_ipc_recv_fd_msg(int sock_fd, int *fd, const char *buf, size_t buf_
 		return SOCK_ERR;
 	}
 
-	if (fd)
-		memcpy(fd, CMSG_DATA(cptr), sizeof(int)); /* *fd = *(int*) data; */
+	if (out_fd)
+		memcpy(out_fd, CMSG_DATA(cptr), sizeof(int));
 
 	return ret;
 }
@@ -676,6 +687,23 @@ char *muse_core_ipc_get_data(muse_module_h module)
 	}
 
 	return NULL;
+}
+
+bool muse_core_ipc_get_data_info(char *data, uint64_t *data_id, int *size)
+{
+	muse_recv_data_t *qData;
+	g_return_if_fail(data);
+
+	qData = (muse_recv_data_t *)(data - sizeof(muse_recv_data_head_t));
+	if (qData && qData->header.marker == MUSE_DATA_HEAD) {
+		if(data_id)
+			*data_id = qData->header.id;
+		if(size)
+			*size = qData->header.size;
+
+		return TRUE;
+	}
+	return FALSE;
 }
 
 intptr_t muse_core_ipc_get_handle(muse_module_h module)
