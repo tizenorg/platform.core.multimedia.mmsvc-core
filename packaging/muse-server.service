@@ -7,6 +7,7 @@ After=tbm-drm-auth.service
 Type=forking
 User=multimedia_fw
 Group=multimedia_fw
+SmackProcessLabel=System
 ExecStart=/usr/bin/muse-server
 Restart=always
 MemoryLimit=300M
