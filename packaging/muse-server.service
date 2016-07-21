@@ -8,6 +8,7 @@ Type=forking
 User=multimedia_fw
 Group=multimedia_fw
 ExecStart=/usr/bin/muse-server
+SmackProcessLabel=System
 Restart=always
 MemoryLimit=300M
 EnvironmentFile=/run/tizen-system-env
