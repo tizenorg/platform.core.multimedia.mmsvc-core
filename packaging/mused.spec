@@ -1,7 +1,7 @@
 Name:       mused
 Summary:    A Multimedia Daemon in Tizen Native API
-Version:    0.1.3
-Release:    2
+Version:    0.1.4
+Release:    1
 Group:      System/Libraries
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz

@@ -336,7 +336,6 @@ static int _muse_core_client_new(muse_core_channel_e channel)
 			(void) close(sockfd);
 			return -1;
 		}
-		LOGD("fcntl");
 	}
 
 	memset(&address, 0, sizeof(address));
@@ -349,7 +348,7 @@ static int _muse_core_client_new(muse_core_channel_e channel)
 
 	if ((ret = connect(sockfd, (struct sockaddr *)&address, len)) < 0) {
 		strerror_r(errno, err_msg, MAX_ERROR_MSG_LEN);
-		LOGE("connect failure %s", err_msg);
+		LOGE("connect failure : %s", err_msg);
 		close(sockfd);
 		return ret;
 	}
