@@ -432,6 +432,11 @@ int muse_core_run()
 		return 1;
 	}
 
+	if (creat(MUSE_SERVER_READY, 0644) != -1)
+		LOGD("MUSE_SERVER_READY(%s) file was created", MUSE_SERVER_READY);
+	else
+		LOGE("Fail to create MUSE_SERVER_READY(%s)", MUSE_SERVER_READY);
+
 	LOGD("g_main_loop_run");
 	g_main_loop_run(g_loop);
 

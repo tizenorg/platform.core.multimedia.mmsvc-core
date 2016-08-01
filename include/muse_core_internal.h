@@ -65,7 +65,7 @@ extern "C" {
 #define LOCKFILE "/tmp/.muse_core.lock"
 #define SOCKFILE0 "/tmp/.muse_core_socket"
 #define SOCKFILE1 "/tmp/.muse_core_data_socket"
-
+#define MUSE_SERVER_READY "/tmp/.muse_server_ready"
 #define MUSE_DATA_ROOT_PATH TZ_SYS_DATA_PATH"/mused/"
 
 #define READ		0x02
