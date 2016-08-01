@@ -106,7 +106,7 @@ static void _muse_core_module_set_dllsymbol_loaded_value(int api_module, GModule
 
 	g_muse_core_module->module_loaded[api_module] = value;
 	g_muse_core_module->module[api_module] = module;
-	LOGD("module: %p", g_muse_core_module->module[api_module]);
+	LOGD("dll_handle: %p", g_muse_core_module->module[api_module]);
 }
 static gboolean _muse_core_module_get_dllsymbol_loaded_value(int api_module)
 {
